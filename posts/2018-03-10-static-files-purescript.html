@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="x-ua-compatible" content="ie=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>piq9117 - Purescript - Serving Static Files with Purescript-Express</title>
+        <link href="https://fonts.googleapis.com/css?family=Nanum+Gothic+Coding&display=swap" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css?family=EB+Garamond&display=swap" rel="stylesheet">
+        <link rel="stylesheet" href="../css/default.css" />
+    </head>
+    <body>
+        <header>
+            <div class="logo">
+                <a href="../">piq9117</a>
+            </div>
+            <nav>
+                <a href="../">home</a>
+                <a href="../about.html">about</a>
+                <a href="../contact.html">contact</a>
+            </nav>
+        </header>
+
+        <main role="main">
+            <h1>Purescript - Serving Static Files with Purescript-Express</h1>
+            <article>
+    <section class="header">
+        Posted on March 10, 2018
+        
+    </section>
+    <section>
+        <p>This is a server that will only serve static files.
+There’s no complicated routing, and no complicated request/response handling.</p>
+<p>The only route it will have is the “catch-all” route that is needed by a single page
+application.</p>
+<p>This static file server will be using <a href="https://github.com/nkly/purescript-express">purescript-exress</a>.</p>
+<p>In my <a href="https://github.com/piq9117/ps-playground/tree/master/purs-static">example</a> I used <a href="https://angular.io/">angular</a> and <a href="https://cli.angular.io/">angular-cli</a>
+as my client side application. Angular cli will scaffold project. It will also build
+the client side application and output it to the <code class="codeLine">dist</code> directory.</p>
+<p>Afterwards, the purescript server will look for that <code class="codeLine">dist</code> directory
+and serve it.</p>
+<p>This is the entirety of the code.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">module</span> <span class="dt">Main</span> <span class="kw">where</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Prelude</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Control.Monad.Eff</span> (<span class="dt">Eff</span>)</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Control.Monad.Eff.Class</span> (liftEff)</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Control.Monad.Eff.Console</span> (<span class="dt">CONSOLE</span>, log)</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Control.Monad.Eff.Ref</span> (newRef, <span class="dt">REF</span>, <span class="dt">Ref</span>)</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Data.Int</span> (fromString)</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Data.Maybe</span> (fromMaybe)</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Node.Express.App</span> (listenHttp, <span class="dt">AppM</span>, use)</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Node.Express.Handler</span> (<span class="dt">HandlerM</span>, next)</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Node.Express.Middleware.Static</span> (static)</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Node.Express.Request</span> (getOriginalUrl, setUserData)</span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Node.Express.Response</span> (send)</span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Node.Express.Types</span> (<span class="dt">EXPRESS</span>)</span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Node.HTTP</span> (<span class="dt">Server</span>)</span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Node.Process</span> (lookupEnv, <span class="dt">PROCESS</span>)</span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a><span class="ot">parseInt ::</span> <span class="dt">String</span> <span class="ot">-&gt;</span> <span class="dt">Int</span></span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>parseInt str <span class="ot">=</span> fromMaybe <span class="dv">0</span> <span class="op">$</span> fromString str</span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a>logger</span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a><span class="ot">  ::</span> ∀ a b<span class="op">.</span></span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>     b</span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a>     <span class="ot">-&gt;</span> <span class="dt">HandlerM</span> (<span class="ot"> express::</span> <span class="dt">EXPRESS</span></span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a>                 ,<span class="ot"> console ::</span> <span class="dt">CONSOLE</span> <span class="op">|</span> a) <span class="dt">Unit</span></span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a>logger state <span class="ot">=</span> <span class="kw">do</span></span>
+<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a>  url <span class="ot">&lt;-</span> getOriginalUrl</span>
+<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a>  liftEff <span class="op">$</span> <span class="fu">log</span> (<span class="st">&quot;&gt;&gt;&gt; &quot;</span> <span class="op">&lt;&gt;</span> url)</span>
+<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a>  setUserData <span class="st">&quot;logged&quot;</span> url</span>
+<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a>  next</span>
+<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-34"><a href="#cb1-34" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="dt">AppState</span> <span class="ot">=</span> <span class="dt">String</span></span>
+<span id="cb1-35"><a href="#cb1-35" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-36"><a href="#cb1-36" aria-hidden="true" tabindex="-1"></a>initState</span>
+<span id="cb1-37"><a href="#cb1-37" aria-hidden="true" tabindex="-1"></a><span class="ot">  ::</span> ∀ eff<span class="op">.</span></span>
+<span id="cb1-38"><a href="#cb1-38" aria-hidden="true" tabindex="-1"></a>     <span class="dt">Eff</span> (<span class="ot">ref ::</span> <span class="dt">REF</span> <span class="op">|</span> eff) (<span class="dt">Ref</span> <span class="dt">String</span>)</span>
+<span id="cb1-39"><a href="#cb1-39" aria-hidden="true" tabindex="-1"></a>initState <span class="ot">=</span> newRef (<span class="st">&quot;&quot;</span><span class="ot"> ::</span> <span class="dt">AppState</span>)</span>
+<span id="cb1-40"><a href="#cb1-40" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-41"><a href="#cb1-41" aria-hidden="true" tabindex="-1"></a>appSetup</span>
+<span id="cb1-42"><a href="#cb1-42" aria-hidden="true" tabindex="-1"></a><span class="ot">  ::</span> ∀ a e<span class="op">.</span></span>
+<span id="cb1-43"><a href="#cb1-43" aria-hidden="true" tabindex="-1"></a>     a</span>
+<span id="cb1-44"><a href="#cb1-44" aria-hidden="true" tabindex="-1"></a>     <span class="ot">-&gt;</span>  <span class="dt">AppM</span> (<span class="ot"> express ::</span> <span class="dt">EXPRESS</span></span>
+<span id="cb1-45"><a href="#cb1-45" aria-hidden="true" tabindex="-1"></a>              ,<span class="ot"> console ::</span> <span class="dt">CONSOLE</span> <span class="op">|</span> e) <span class="dt">Unit</span></span>
+<span id="cb1-46"><a href="#cb1-46" aria-hidden="true" tabindex="-1"></a>appSetup state <span class="ot">=</span> <span class="kw">do</span></span>
+<span id="cb1-47"><a href="#cb1-47" aria-hidden="true" tabindex="-1"></a>  use (logger state)</span>
+<span id="cb1-48"><a href="#cb1-48" aria-hidden="true" tabindex="-1"></a>  use (static <span class="st">&quot;dist&quot;</span>)</span>
+<span id="cb1-49"><a href="#cb1-49" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-50"><a href="#cb1-50" aria-hidden="true" tabindex="-1"></a>server</span>
+<span id="cb1-51"><a href="#cb1-51" aria-hidden="true" tabindex="-1"></a><span class="ot">  ::</span> ∀ eff<span class="op">.</span></span>
+<span id="cb1-52"><a href="#cb1-52" aria-hidden="true" tabindex="-1"></a>     <span class="dt">Eff</span> (<span class="ot"> console ::</span> <span class="dt">CONSOLE</span></span>
+<span id="cb1-53"><a href="#cb1-53" aria-hidden="true" tabindex="-1"></a>         ,<span class="ot"> ref ::</span> <span class="dt">REF</span></span>
+<span id="cb1-54"><a href="#cb1-54" aria-hidden="true" tabindex="-1"></a>         ,<span class="ot"> process ::</span> <span class="dt">PROCESS</span></span>
+<span id="cb1-55"><a href="#cb1-55" aria-hidden="true" tabindex="-1"></a>         ,<span class="ot">  express ::</span> <span class="dt">EXPRESS</span></span>
+<span id="cb1-56"><a href="#cb1-56" aria-hidden="true" tabindex="-1"></a>         ,<span class="ot"> console ::</span> <span class="dt">CONSOLE</span> <span class="op">|</span> eff) <span class="dt">Server</span></span>
+<span id="cb1-57"><a href="#cb1-57" aria-hidden="true" tabindex="-1"></a>server <span class="ot">=</span> <span class="kw">do</span></span>
+<span id="cb1-58"><a href="#cb1-58" aria-hidden="true" tabindex="-1"></a>  state <span class="ot">&lt;-</span> initState</span>
+<span id="cb1-59"><a href="#cb1-59" aria-hidden="true" tabindex="-1"></a>  port <span class="ot">&lt;-</span> (parseInt <span class="op">&lt;&lt;&lt;</span> fromMaybe <span class="st">&quot;8000&quot;</span>) <span class="op">&lt;$&gt;</span> lookupEnv <span class="st">&quot;PORT&quot;</span></span>
+<span id="cb1-60"><a href="#cb1-60" aria-hidden="true" tabindex="-1"></a>  listenHttp (appSetup state) port \_ <span class="ot">-&gt;</span></span>
+<span id="cb1-61"><a href="#cb1-61" aria-hidden="true" tabindex="-1"></a>    <span class="fu">log</span> <span class="op">$</span> <span class="st">&quot;Listening on &quot;</span> <span class="op">&lt;&gt;</span> <span class="fu">show</span> port</span>
+<span id="cb1-62"><a href="#cb1-62" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-63"><a href="#cb1-63" aria-hidden="true" tabindex="-1"></a>main</span>
+<span id="cb1-64"><a href="#cb1-64" aria-hidden="true" tabindex="-1"></a><span class="ot">  ::</span> ∀ eff<span class="op">.</span></span>
+<span id="cb1-65"><a href="#cb1-65" aria-hidden="true" tabindex="-1"></a>     <span class="dt">Eff</span> (<span class="ot"> console ::</span> <span class="dt">CONSOLE</span></span>
+<span id="cb1-66"><a href="#cb1-66" aria-hidden="true" tabindex="-1"></a>         ,<span class="ot"> ref ::</span> <span class="dt">REF</span></span>
+<span id="cb1-67"><a href="#cb1-67" aria-hidden="true" tabindex="-1"></a>         ,<span class="ot"> process ::</span> <span class="dt">PROCESS</span></span>
+<span id="cb1-68"><a href="#cb1-68" aria-hidden="true" tabindex="-1"></a>         ,<span class="ot">  express ::</span> <span class="dt">EXPRESS</span></span>
+<span id="cb1-69"><a href="#cb1-69" aria-hidden="true" tabindex="-1"></a>         ,<span class="ot"> console ::</span> <span class="dt">CONSOLE</span> <span class="op">|</span> eff) <span class="dt">Server</span></span>
+<span id="cb1-70"><a href="#cb1-70" aria-hidden="true" tabindex="-1"></a>main <span class="ot">=</span> server</span></code></pre></div>
+    </section>
+</article>
+
+        </main>
+
+        <footer>
+            Site proudly generated by
+            <a href="http://jaspervdj.be/hakyll">Hakyll</a>
+        </footer>
+    </body>
+</html>

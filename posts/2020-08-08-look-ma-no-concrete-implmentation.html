@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="x-ua-compatible" content="ie=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>piq9117 - Haskell - Look Ma! No Concrete Implementation!</title>
+        <link href="https://fonts.googleapis.com/css?family=Nanum+Gothic+Coding&display=swap" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css?family=EB+Garamond&display=swap" rel="stylesheet">
+        <link rel="stylesheet" href="../css/default.css" />
+    </head>
+    <body>
+        <header>
+            <div class="logo">
+                <a href="../">piq9117</a>
+            </div>
+            <nav>
+                <a href="../">home</a>
+                <a href="../about.html">about</a>
+                <a href="../contact.html">contact</a>
+            </nav>
+        </header>
+
+        <main role="main">
+            <h1>Haskell - Look Ma! No Concrete Implementation!</h1>
+            <article>
+    <section class="header">
+        Posted on August  8, 2020
+        
+    </section>
+    <section>
+        <p>This is my post about tagless final encoding. There are many like it, but this
+one is mine. My tagless final encoding post is my best friend. It is my life. I
+must master it as I must master my life.</p>
+<p>I can’t think of a good intro so I modified the Rifleman’s Creed. Anyway,
+the tagless final encoding technique has been very helpful in structuring my
+programs without being burdened about dependencies so much, because of this I
+can change dependencies and mostly don’t have to re-structure my program. This
+technique also makes it <em>almost</em> effortless to do unit testing.</p>
+<p>Just like my other posts let’s do a <a href="https://taezos.org/piq9117/notes-examples/src/branch/master/tagless-transform">contrived example</a>.</p>
+<p>This is our user story.</p>
+<ul>
+<li>A command line tool that takes a file path to a text file that contains some text.</li>
+<li>The content of the input file will be processed, and the text content will
+be capitalized.</li>
+<li>The processed text content will then be printed to an output file.</li>
+</ul>
+<p>Let’s start by creating the representation of our application.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ot">{-# LANGUAGE DerivingStrategies         #-}</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="ot">{-# LANGUAGE GeneralizedNewtypeDeriving #-}</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="kw">module</span> <span class="dt">AppM</span> <span class="kw">where</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="kw">newtype</span> <span class="dt">AppM</span> a</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>  <span class="ot">=</span> <span class="dt">AppM</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>  {<span class="ot"> runAppM ::</span> <span class="dt">IO</span> a</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>  } <span class="kw">deriving</span> <span class="kw">newtype</span> ( <span class="dt">Functor</span>, <span class="dt">Applicative</span>, <span class="dt">Monad</span>, <span class="dt">MonadIO</span> )</span></code></pre></div>
+<p>Then, let’s define the capabilities of the app based on the made up user story.
+First, the cli capability.</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">module</span> <span class="dt">Capability.CLI</span> <span class="kw">where</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> <span class="dt">Monad</span> m <span class="ot">=&gt;</span> <span class="dt">ManageCLI</span> m <span class="kw">where</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="ot">  parseCliCommand ::</span> m <span class="dt">Command</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a><span class="ot">  interpretCLI ::</span> <span class="dt">Command</span> <span class="ot">-&gt;</span> m ()</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">Command</span> <span class="ot">=</span> <span class="dt">Command</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>  {<span class="ot"> commandInput  ::</span> <span class="dt">Text</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>  ,<span class="ot"> commandOutput ::</span> <span class="dt">Text</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>  } <span class="kw">deriving</span> ( <span class="dt">Eq</span>, <span class="dt">Show</span> )</span></code></pre></div>
+<p>Next, the capabalities to manipulate files in the file system.</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">module</span> <span class="dt">Capability.File</span> <span class="kw">where</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> <span class="dt">Monad</span> m <span class="ot">=&gt;</span> <span class="dt">ManageFile</span> m <span class="kw">where</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="ot">  getFileContent ::</span> <span class="dt">Text</span> <span class="ot">-&gt;</span> m <span class="dt">Text</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="ot">  printContent ::</span> <span class="dt">Text</span> <span class="ot">-&gt;</span> <span class="dt">Text</span> <span class="ot">-&gt;</span> m ()</span></code></pre></div>
+<p>Finally, the capability to manipulate text.</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="kw">module</span> <span class="dt">Capability.TextContent</span> <span class="kw">where</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> <span class="dt">Monad</span> m <span class="ot">=&gt;</span> <span class="dt">ManageTextContent</span> m <span class="kw">where</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="ot">  capitalizeContent ::</span> <span class="dt">Text</span> <span class="ot">-&gt;</span> m <span class="dt">Text</span></span></code></pre></div>
+<p>With all these capabilities, I think we are ready to assemble our program. So,
+let’s go back to the <code class="codeLine">AppM</code> module. We have to create instances but
+skip the implementation for now, and use <code class="codeLine">undefined</code></p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="ot">{-# LANGUAGE DerivingStrategies         #-}</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="ot">{-# LANGUAGE GeneralizedNewtypeDeriving #-}</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="ot">{-# LANGUAGE InstanceSigs               #-}</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a><span class="ot">{-# LANGUAGE RecordWildCards            #-}</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a><span class="kw">module</span> <span class="dt">AppM</span> <span class="kw">where</span></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span>           <span class="dt">Capability.CLI</span></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span>           <span class="dt">Capability.File</span></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span>           <span class="dt">Capability.TextContent</span></span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a><span class="kw">newtype</span> <span class="dt">AppM</span> a</span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>  <span class="ot">=</span> <span class="dt">AppM</span></span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a>  {<span class="ot"> runAppM ::</span> <span class="dt">IO</span> a</span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a>  } <span class="kw">deriving</span> <span class="kw">newtype</span> ( <span class="dt">Functor</span>, <span class="dt">Applicative</span>, <span class="dt">Monad</span>, <span class="dt">MonadIO</span> )</span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a><span class="ot">startApp ::</span> <span class="dt">IO</span> ()</span>
+<span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a>startApp <span class="ot">=</span> runAppM <span class="op">$</span> interpretCLI <span class="op">=&lt;&lt;</span> parseCliCommand</span>
+<span id="cb5-18"><a href="#cb5-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-19"><a href="#cb5-19" aria-hidden="true" tabindex="-1"></a><span class="kw">instance</span> <span class="dt">ManageCLI</span> <span class="dt">AppM</span> <span class="kw">where</span></span>
+<span id="cb5-20"><a href="#cb5-20" aria-hidden="true" tabindex="-1"></a><span class="ot">  parseCliCommand ::</span> <span class="dt">AppM</span> <span class="dt">Command</span></span>
+<span id="cb5-21"><a href="#cb5-21" aria-hidden="true" tabindex="-1"></a>  parseCliCommand <span class="ot">=</span> <span class="fu">undefined</span></span>
+<span id="cb5-22"><a href="#cb5-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-23"><a href="#cb5-23" aria-hidden="true" tabindex="-1"></a><span class="ot">  interpretCLI ::</span> <span class="dt">Command</span> <span class="ot">-&gt;</span> <span class="dt">AppM</span> ()</span>
+<span id="cb5-24"><a href="#cb5-24" aria-hidden="true" tabindex="-1"></a>  interpretCLI <span class="dt">Command</span>{<span class="op">..</span>} <span class="ot">=</span> <span class="kw">do</span></span>
+<span id="cb5-25"><a href="#cb5-25" aria-hidden="true" tabindex="-1"></a>    file <span class="ot">&lt;-</span> getFileContent commandInput</span>
+<span id="cb5-26"><a href="#cb5-26" aria-hidden="true" tabindex="-1"></a>    content <span class="ot">&lt;-</span> capitalizeContent file</span>
+<span id="cb5-27"><a href="#cb5-27" aria-hidden="true" tabindex="-1"></a>    printContent commandOutput content</span>
+<span id="cb5-28"><a href="#cb5-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-29"><a href="#cb5-29" aria-hidden="true" tabindex="-1"></a><span class="kw">instance</span> <span class="dt">ManageFile</span> <span class="dt">AppM</span> <span class="kw">where</span></span>
+<span id="cb5-30"><a href="#cb5-30" aria-hidden="true" tabindex="-1"></a><span class="ot">  getFileContent ::</span> <span class="dt">Text</span> <span class="ot">-&gt;</span> <span class="dt">AppM</span> <span class="dt">Text</span></span>
+<span id="cb5-31"><a href="#cb5-31" aria-hidden="true" tabindex="-1"></a>  getFileContent filePath <span class="ot">=</span> <span class="fu">undefined</span></span>
+<span id="cb5-32"><a href="#cb5-32" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-33"><a href="#cb5-33" aria-hidden="true" tabindex="-1"></a><span class="ot">  printContent ::</span> <span class="dt">Text</span> <span class="ot">-&gt;</span> <span class="dt">Text</span> <span class="ot">-&gt;</span> <span class="dt">AppM</span> ()</span>
+<span id="cb5-34"><a href="#cb5-34" aria-hidden="true" tabindex="-1"></a>  printContent outputPath content <span class="ot">=</span> <span class="fu">undefined</span></span>
+<span id="cb5-35"><a href="#cb5-35" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-36"><a href="#cb5-36" aria-hidden="true" tabindex="-1"></a><span class="kw">instance</span> <span class="dt">ManageTextContent</span> <span class="dt">AppM</span> <span class="kw">where</span></span>
+<span id="cb5-37"><a href="#cb5-37" aria-hidden="true" tabindex="-1"></a><span class="ot">  capitalizeContent ::</span> <span class="dt">Text</span> <span class="ot">-&gt;</span> <span class="dt">AppM</span> <span class="dt">Text</span></span>
+<span id="cb5-38"><a href="#cb5-38" aria-hidden="true" tabindex="-1"></a>  capitalizeContent content <span class="ot">=</span> <span class="fu">undefined</span></span></code></pre></div>
+<p>As you can see we were able to assemble our program in <code class="codeLine">interpretCLI</code>
+without any concrete implementations. When we provide the concrete implementations,
+we won’t get so bogged down by thinking about the entire the program because we’ve
+already done that. We only have to think about the concrete implementations of
+individual capabilities. For example, we only need to think about how to retreive
+a file, print a file, etc.</p>
+<p>Proceeding to our concrete implementation we can pick
+<code class="codeLine">optparse-applicative</code> as our cli utility and <code class="codeLine">relude</code> as
+our prelude.</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="kw">module</span> <span class="dt">AppM</span> <span class="kw">where</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a><span class="op">...</span></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span>           <span class="dt">Relude</span></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="kw">qualified</span> <span class="dt">Data.Text</span>              <span class="kw">as</span> <span class="dt">T</span></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span>           <span class="dt">Options.Applicative</span></span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a><span class="kw">instance</span> <span class="dt">ManageCLI</span> <span class="dt">AppM</span> <span class="kw">where</span></span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a><span class="ot">  parseCliCommand ::</span> <span class="dt">AppM</span> <span class="dt">Command</span></span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a>  parseCliCommand <span class="ot">=</span> liftIO </span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a>    <span class="op">$</span> execParser ( info ( helper <span class="op">&lt;*&gt;</span> parseCommand ) fullDesc )</span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a><span class="ot">  interpretCLI ::</span> <span class="dt">Command</span> <span class="ot">-&gt;</span> <span class="dt">AppM</span> ()</span>
+<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a>  interpretCLI <span class="dt">Command</span>{<span class="op">..</span>} <span class="ot">=</span> <span class="kw">do</span></span>
+<span id="cb6-15"><a href="#cb6-15" aria-hidden="true" tabindex="-1"></a>    file <span class="ot">&lt;-</span> getFileContent commandInput</span>
+<span id="cb6-16"><a href="#cb6-16" aria-hidden="true" tabindex="-1"></a>    content <span class="ot">&lt;-</span> capitalizeContent file</span>
+<span id="cb6-17"><a href="#cb6-17" aria-hidden="true" tabindex="-1"></a>    printContent commandOutput content</span>
+<span id="cb6-18"><a href="#cb6-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-19"><a href="#cb6-19" aria-hidden="true" tabindex="-1"></a><span class="kw">instance</span> <span class="dt">ManageFile</span> <span class="dt">AppM</span> <span class="kw">where</span></span>
+<span id="cb6-20"><a href="#cb6-20" aria-hidden="true" tabindex="-1"></a><span class="ot">  getFileContent ::</span> <span class="dt">Text</span> <span class="ot">-&gt;</span> <span class="dt">AppM</span> <span class="dt">Text</span></span>
+<span id="cb6-21"><a href="#cb6-21" aria-hidden="true" tabindex="-1"></a>  getFileContent filePath <span class="ot">=</span> readFileText ( T.unpack filePath )</span>
+<span id="cb6-22"><a href="#cb6-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-23"><a href="#cb6-23" aria-hidden="true" tabindex="-1"></a><span class="ot">  printContent ::</span> <span class="dt">Text</span> <span class="ot">-&gt;</span> <span class="dt">Text</span> <span class="ot">-&gt;</span> <span class="dt">AppM</span> ()</span>
+<span id="cb6-24"><a href="#cb6-24" aria-hidden="true" tabindex="-1"></a>  printContent outputPath content <span class="ot">=</span> </span>
+<span id="cb6-25"><a href="#cb6-25" aria-hidden="true" tabindex="-1"></a>    writeFileText ( T.unpack outputPath ) content</span>
+<span id="cb6-26"><a href="#cb6-26" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-27"><a href="#cb6-27" aria-hidden="true" tabindex="-1"></a><span class="kw">instance</span> <span class="dt">ManageTextContent</span> <span class="dt">AppM</span> <span class="kw">where</span></span>
+<span id="cb6-28"><a href="#cb6-28" aria-hidden="true" tabindex="-1"></a><span class="ot">  capitalizeContent ::</span> <span class="dt">Text</span> <span class="ot">-&gt;</span> <span class="dt">AppM</span> <span class="dt">Text</span></span>
+<span id="cb6-29"><a href="#cb6-29" aria-hidden="true" tabindex="-1"></a>  capitalizeContent content <span class="ot">=</span> <span class="fu">pure</span> <span class="op">$</span> T.toUpper content</span></code></pre></div>
+<p>By using <code class="codeLine">optparse-applicative</code>, here’s the implementatin of <code class="codeLine">parseCommand</code></p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="ot">parseCommand ::</span> <span class="dt">Parser</span> <span class="dt">Command</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>parseCommand <span class="ot">=</span> <span class="dt">Command</span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>  <span class="op">&lt;$&gt;</span> strOption ( long <span class="st">&quot;input&quot;</span> <span class="op">&lt;&gt;</span> short <span class="ch">'i'</span> <span class="op">&lt;&gt;</span> metavar <span class="st">&quot;INPUT_FILE&quot;</span> <span class="op">&lt;&gt;</span> help <span class="st">&quot;Input file&quot;</span> )</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>  <span class="op">&lt;*&gt;</span> strOption ( long <span class="st">&quot;output&quot;</span> <span class="op">&lt;&gt;</span> short <span class="ch">'o'</span> <span class="op">&lt;&gt;</span> metavar <span class="st">&quot;OUTPUT_FILE&quot;</span> <span class="op">&lt;&gt;</span> help <span class="st">&quot;Output file&quot;</span> )</span></code></pre></div>
+<p>One obvious downside to this is the <code class="codeLine">n^2</code> instance problem which Vasiliy
+Kevroletin mentions in his <a href="https://serokell.io/blog/tagless-final">article</a>.</p>
+<p>That’s it! We import our library code to the <code class="codeLine">Main</code> module and execute
+the program.</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="kw">module</span> <span class="dt">Main</span> <span class="kw">where</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span>           <span class="dt">Relude</span></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span>           <span class="dt">AppM</span></span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a><span class="ot">main ::</span> <span class="dt">IO</span> ()</span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a>main <span class="ot">=</span> startApp</span></code></pre></div>
+<h2 id="references">References</h2>
+<p><a href="https://github.com/thomashoneyman/purescript-halogen-realworld">Purescript Halogen Realworld repository</a></p>
+<p><a href="https://www.parsonsmatt.org/2018/03/22/three_layer_haskell_cake.html">Three Layer Cake by Matt Parson</a></p>
+<p><a href="https://serokell.io/blog/tagless-final">Introduction to Tagless Final by Vasiliy Kevroletin</a></p>
+<p><a href="https://jproyo.github.io/posts/2019-03-17-tagless-final-haskell.html">Tagles Final Encoding by Juan Pablo Royo Sales</a></p>
+    </section>
+</article>
+
+        </main>
+
+        <footer>
+            Site proudly generated by
+            <a href="http://jaspervdj.be/hakyll">Hakyll</a>
+        </footer>
+    </body>
+</html>

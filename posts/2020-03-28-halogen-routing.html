@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="x-ua-compatible" content="ie=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>piq9117 - Purescript - Halogen Routing</title>
+        <link href="https://fonts.googleapis.com/css?family=Nanum+Gothic+Coding&display=swap" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css?family=EB+Garamond&display=swap" rel="stylesheet">
+        <link rel="stylesheet" href="../css/default.css" />
+    </head>
+    <body>
+        <header>
+            <div class="logo">
+                <a href="../">piq9117</a>
+            </div>
+            <nav>
+                <a href="../">home</a>
+                <a href="../about.html">about</a>
+                <a href="../contact.html">contact</a>
+            </nav>
+        </header>
+
+        <main role="main">
+            <h1>Purescript - Halogen Routing</h1>
+            <article>
+    <section class="header">
+        Posted on March 28, 2020
+        
+    </section>
+    <section>
+        <p>This entry will be pretty similar to my previous purescript-react-basic-hooks
+routing entry. Where I go over how routing works within the framework. This time
+it will be be using the halogen UI framework.</p>
+<p>Thanks to the <a href="https://github.com/thomashoneyman/purescript-halogen-realworld">halogen realworld example</a> it was easy to figure out
+how to do routing in halogen.</p>
+<p>Here’s my understanding of it. I’ll and try and extract the routing part of the
+example and focus on that in this entry.</p>
+<h2 id="router">Router</h2>
+<p>First off, the router component. This component is the parent component. It’s
+the component that will decide what to render based on the route that’s being
+queried to it. The <code class="codeLine">render</code> function <code class="codeLine">case</code> matches on
+the <code class="codeLine">Route</code> then renders the component.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">module</span> <span class="dt">Component.Router</span> <span class="kw">where</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Prelude</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Data.Maybe</span> ( <span class="dt">Maybe</span>(..), fromMaybe )</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Data.Either</span> ( hush )</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="co">-- Internal Page</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Page.Home</span> <span class="kw">as</span> <span class="dt">Home</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Page.About</span> <span class="kw">as</span> <span class="dt">About</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="co">-- Internal Service</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Service.Route</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Service.Navigate</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="co">-- Web</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Web.Event.Event</span> ( preventDefault )</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Web.UIEvent.MouseEvent</span> ( toEvent, <span class="dt">MouseEvent</span> )</span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a><span class="co">-- Effect</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Effect.Class</span> ( class <span class="dt">MonadEffect</span>, liftEffect )</span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a><span class="co">-- Routing</span></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Routing.Duplex</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Routing.Hash</span></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a><span class="co">-- Halogen</span></span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Halogen</span> <span class="kw">as</span> <span class="dt">H</span></span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Halogen.HTML</span> <span class="kw">as</span> <span class="dt">HH</span></span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Halogen.HTML.Properties</span> <span class="kw">as</span> <span class="dt">HP</span></span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Halogen.HTML.Events</span> <span class="kw">as</span> <span class="dt">HE</span></span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="dt">State</span> <span class="ot">=</span></span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a>  {<span class="ot"> route ::</span> <span class="dt">Maybe</span> <span class="dt">Route</span></span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">Query</span> a <span class="ot">=</span> <span class="dt">Navigate</span> <span class="dt">Route</span> a</span>
+<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">Action</span></span>
+<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a>  <span class="ot">=</span> <span class="dt">Initialize</span></span>
+<span id="cb1-34"><a href="#cb1-34" aria-hidden="true" tabindex="-1"></a>  <span class="op">|</span> <span class="dt">GoTo</span> <span class="dt">Route</span> <span class="dt">MouseEvent</span></span>
+<span id="cb1-35"><a href="#cb1-35" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-36"><a href="#cb1-36" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="dt">ChildSlots</span> <span class="ot">=</span></span>
+<span id="cb1-37"><a href="#cb1-37" aria-hidden="true" tabindex="-1"></a>  (<span class="ot"> home ::</span> <span class="dt">Home.Slot</span> <span class="dt">Unit</span></span>
+<span id="cb1-38"><a href="#cb1-38" aria-hidden="true" tabindex="-1"></a>  ,<span class="ot"> about ::</span> <span class="dt">About.Slot</span> <span class="dt">Unit</span></span>
+<span id="cb1-39"><a href="#cb1-39" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb1-40"><a href="#cb1-40" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-41"><a href="#cb1-41" aria-hidden="true" tabindex="-1"></a>component</span>
+<span id="cb1-42"><a href="#cb1-42" aria-hidden="true" tabindex="-1"></a><span class="ot">  ::</span> <span class="kw">forall</span> i o m</span>
+<span id="cb1-43"><a href="#cb1-43" aria-hidden="true" tabindex="-1"></a>  <span class="op">.</span> <span class="dt">MonadEffect</span> m</span>
+<span id="cb1-44"><a href="#cb1-44" aria-hidden="true" tabindex="-1"></a>  <span class="ot">=&gt;</span> <span class="dt">Navigate</span> m</span>
+<span id="cb1-45"><a href="#cb1-45" aria-hidden="true" tabindex="-1"></a>  <span class="ot">=&gt;</span> <span class="dt">H.Component</span> <span class="dt">HH.HTML</span> <span class="dt">Query</span> i o m</span>
+<span id="cb1-46"><a href="#cb1-46" aria-hidden="true" tabindex="-1"></a>component <span class="ot">=</span></span>
+<span id="cb1-47"><a href="#cb1-47" aria-hidden="true" tabindex="-1"></a>  H.mkComponent</span>
+<span id="cb1-48"><a href="#cb1-48" aria-hidden="true" tabindex="-1"></a>  { initialState<span class="op">:</span> <span class="fu">const</span> { route<span class="op">:</span> <span class="dt">Nothing</span> }</span>
+<span id="cb1-49"><a href="#cb1-49" aria-hidden="true" tabindex="-1"></a>  , render</span>
+<span id="cb1-50"><a href="#cb1-50" aria-hidden="true" tabindex="-1"></a>  , eval<span class="op">:</span> H.mkEval <span class="op">$</span> H.defaultEval</span>
+<span id="cb1-51"><a href="#cb1-51" aria-hidden="true" tabindex="-1"></a>    { handleAction <span class="ot">=</span> handleAction</span>
+<span id="cb1-52"><a href="#cb1-52" aria-hidden="true" tabindex="-1"></a>    , handleQuery <span class="ot">=</span> handleQuery</span>
+<span id="cb1-53"><a href="#cb1-53" aria-hidden="true" tabindex="-1"></a>    , initialize <span class="ot">=</span> <span class="dt">Just</span> <span class="dt">Initialize</span></span>
+<span id="cb1-54"><a href="#cb1-54" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb1-55"><a href="#cb1-55" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb1-56"><a href="#cb1-56" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-57"><a href="#cb1-57" aria-hidden="true" tabindex="-1"></a><span class="co">-- Renders a page component depending on which route is matched.</span></span>
+<span id="cb1-58"><a href="#cb1-58" aria-hidden="true" tabindex="-1"></a><span class="ot">render ::</span> <span class="kw">forall</span> m<span class="op">.</span> <span class="dt">State</span> <span class="ot">-&gt;</span> <span class="dt">H.ComponentHTML</span> <span class="dt">Action</span> <span class="dt">ChildSlots</span> m</span>
+<span id="cb1-59"><a href="#cb1-59" aria-hidden="true" tabindex="-1"></a>render st <span class="ot">=</span> navbar <span class="op">$</span> <span class="kw">case</span> st<span class="op">.</span>route <span class="kw">of</span></span>
+<span id="cb1-60"><a href="#cb1-60" aria-hidden="true" tabindex="-1"></a>  <span class="dt">Nothing</span> <span class="ot">-&gt;</span> HH.h1_ [ HH.text <span class="st">&quot;Oh no! That page wasn't found&quot;</span> ]</span>
+<span id="cb1-61"><a href="#cb1-61" aria-hidden="true" tabindex="-1"></a>  <span class="dt">Just</span> route <span class="ot">-&gt;</span> <span class="kw">case</span> route <span class="kw">of</span></span>
+<span id="cb1-62"><a href="#cb1-62" aria-hidden="true" tabindex="-1"></a>    <span class="dt">Home</span> <span class="ot">-&gt;</span> HH.slot Home._home unit Home.component unit absurd</span>
+<span id="cb1-63"><a href="#cb1-63" aria-hidden="true" tabindex="-1"></a>    <span class="dt">About</span> <span class="ot">-&gt;</span> HH.slot About._about unit About.component unit absurd</span>
+<span id="cb1-64"><a href="#cb1-64" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-65"><a href="#cb1-65" aria-hidden="true" tabindex="-1"></a>handleAction</span>
+<span id="cb1-66"><a href="#cb1-66" aria-hidden="true" tabindex="-1"></a><span class="ot">  ::</span> <span class="kw">forall</span> o m</span>
+<span id="cb1-67"><a href="#cb1-67" aria-hidden="true" tabindex="-1"></a>  <span class="op">.</span> <span class="dt">MonadEffect</span> m</span>
+<span id="cb1-68"><a href="#cb1-68" aria-hidden="true" tabindex="-1"></a>  <span class="ot">=&gt;</span> <span class="dt">Navigate</span> m</span>
+<span id="cb1-69"><a href="#cb1-69" aria-hidden="true" tabindex="-1"></a>  <span class="ot">=&gt;</span> <span class="dt">Action</span></span>
+<span id="cb1-70"><a href="#cb1-70" aria-hidden="true" tabindex="-1"></a>  <span class="ot">-&gt;</span> <span class="dt">H.HalogenM</span> <span class="dt">State</span> <span class="dt">Action</span> <span class="dt">ChildSlots</span> o m <span class="dt">Unit</span></span>
+<span id="cb1-71"><a href="#cb1-71" aria-hidden="true" tabindex="-1"></a>handleAction <span class="ot">=</span> <span class="kw">case</span> _ <span class="kw">of</span></span>
+<span id="cb1-72"><a href="#cb1-72" aria-hidden="true" tabindex="-1"></a>  <span class="co">-- Handles initialization of the route</span></span>
+<span id="cb1-73"><a href="#cb1-73" aria-hidden="true" tabindex="-1"></a>  <span class="dt">Initialize</span> <span class="ot">-&gt;</span> <span class="kw">do</span></span>
+<span id="cb1-74"><a href="#cb1-74" aria-hidden="true" tabindex="-1"></a>    initialRoute <span class="ot">&lt;-</span> hush <span class="op">&lt;&lt;&lt;</span> ( parse routeCodec ) <span class="op">&lt;$&gt;</span> H.liftEffect getHash</span>
+<span id="cb1-75"><a href="#cb1-75" aria-hidden="true" tabindex="-1"></a>    navigate <span class="op">$</span> fromMaybe <span class="dt">Home</span> initialRoute</span>
+<span id="cb1-76"><a href="#cb1-76" aria-hidden="true" tabindex="-1"></a>  <span class="co">--  Handles the consecutive route changes.</span></span>
+<span id="cb1-77"><a href="#cb1-77" aria-hidden="true" tabindex="-1"></a>  <span class="dt">GoTo</span> route e <span class="ot">-&gt;</span> <span class="kw">do</span></span>
+<span id="cb1-78"><a href="#cb1-78" aria-hidden="true" tabindex="-1"></a>    liftEffect <span class="op">$</span> preventDefault ( toEvent e )</span>
+<span id="cb1-79"><a href="#cb1-79" aria-hidden="true" tabindex="-1"></a>    mRoute <span class="ot">&lt;-</span> H.gets _<span class="op">.</span>route</span>
+<span id="cb1-80"><a href="#cb1-80" aria-hidden="true" tabindex="-1"></a>    when ( mRoute <span class="op">/=</span> <span class="dt">Just</span> route ) <span class="op">$</span> navigate route</span>
+<span id="cb1-81"><a href="#cb1-81" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-82"><a href="#cb1-82" aria-hidden="true" tabindex="-1"></a><span class="ot">handleQuery ::</span> <span class="kw">forall</span> a o m<span class="op">.</span> <span class="dt">Query</span> a <span class="ot">-&gt;</span> <span class="dt">H.HalogenM</span> <span class="dt">State</span> <span class="dt">Action</span> <span class="dt">ChildSlots</span> o m ( <span class="dt">Maybe</span> a )</span>
+<span id="cb1-83"><a href="#cb1-83" aria-hidden="true" tabindex="-1"></a>handleQuery <span class="ot">=</span> <span class="kw">case</span> _ <span class="kw">of</span></span>
+<span id="cb1-84"><a href="#cb1-84" aria-hidden="true" tabindex="-1"></a>  <span class="co">-- This is the case that runs every time the brower's hash route changes.</span></span>
+<span id="cb1-85"><a href="#cb1-85" aria-hidden="true" tabindex="-1"></a>  <span class="dt">Navigate</span> route a <span class="ot">-&gt;</span> <span class="kw">do</span></span>
+<span id="cb1-86"><a href="#cb1-86" aria-hidden="true" tabindex="-1"></a>    mRoute <span class="ot">&lt;-</span> H.gets _<span class="op">.</span>route</span>
+<span id="cb1-87"><a href="#cb1-87" aria-hidden="true" tabindex="-1"></a>    when ( mRoute <span class="op">/=</span> <span class="dt">Just</span> route ) <span class="op">$</span></span>
+<span id="cb1-88"><a href="#cb1-88" aria-hidden="true" tabindex="-1"></a>      H.modify_ _ { route <span class="ot">=</span> <span class="dt">Just</span> route }</span>
+<span id="cb1-89"><a href="#cb1-89" aria-hidden="true" tabindex="-1"></a>    <span class="fu">pure</span> ( <span class="dt">Just</span> a )</span>
+<span id="cb1-90"><a href="#cb1-90" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-91"><a href="#cb1-91" aria-hidden="true" tabindex="-1"></a><span class="ot">navbar ::</span> <span class="kw">forall</span> a <span class="op">.</span> <span class="dt">HH.HTML</span> a <span class="dt">Action</span> <span class="ot">-&gt;</span> <span class="dt">HH.HTML</span> a <span class="dt">Action</span></span>
+<span id="cb1-92"><a href="#cb1-92" aria-hidden="true" tabindex="-1"></a>navbar html <span class="ot">=</span></span>
+<span id="cb1-93"><a href="#cb1-93" aria-hidden="true" tabindex="-1"></a>  HH.div_</span>
+<span id="cb1-94"><a href="#cb1-94" aria-hidden="true" tabindex="-1"></a>  [ HH.ul_</span>
+<span id="cb1-95"><a href="#cb1-95" aria-hidden="true" tabindex="-1"></a>    [ HH.li_</span>
+<span id="cb1-96"><a href="#cb1-96" aria-hidden="true" tabindex="-1"></a>      [ HH.a</span>
+<span id="cb1-97"><a href="#cb1-97" aria-hidden="true" tabindex="-1"></a>        [ HP.href <span class="st">&quot;#&quot;</span></span>
+<span id="cb1-98"><a href="#cb1-98" aria-hidden="true" tabindex="-1"></a>        , HE.onClick ( <span class="dt">Just</span> <span class="op">&lt;&lt;&lt;</span> <span class="dt">GoTo</span> <span class="dt">Home</span> )</span>
+<span id="cb1-99"><a href="#cb1-99" aria-hidden="true" tabindex="-1"></a>        ]</span>
+<span id="cb1-100"><a href="#cb1-100" aria-hidden="true" tabindex="-1"></a>        [ HH.text <span class="st">&quot;Home&quot;</span> ]</span>
+<span id="cb1-101"><a href="#cb1-101" aria-hidden="true" tabindex="-1"></a>      ]</span>
+<span id="cb1-102"><a href="#cb1-102" aria-hidden="true" tabindex="-1"></a>    , HH.li_</span>
+<span id="cb1-103"><a href="#cb1-103" aria-hidden="true" tabindex="-1"></a>      [ HH.a</span>
+<span id="cb1-104"><a href="#cb1-104" aria-hidden="true" tabindex="-1"></a>        [ HP.href <span class="st">&quot;#&quot;</span></span>
+<span id="cb1-105"><a href="#cb1-105" aria-hidden="true" tabindex="-1"></a>        , HE.onClick ( <span class="dt">Just</span> <span class="op">&lt;&lt;&lt;</span> <span class="dt">GoTo</span> <span class="dt">About</span> )</span>
+<span id="cb1-106"><a href="#cb1-106" aria-hidden="true" tabindex="-1"></a>        ]</span>
+<span id="cb1-107"><a href="#cb1-107" aria-hidden="true" tabindex="-1"></a>        [ HH.text <span class="st">&quot;About&quot;</span> ]</span>
+<span id="cb1-108"><a href="#cb1-108" aria-hidden="true" tabindex="-1"></a>      ]</span>
+<span id="cb1-109"><a href="#cb1-109" aria-hidden="true" tabindex="-1"></a>    ]</span>
+<span id="cb1-110"><a href="#cb1-110" aria-hidden="true" tabindex="-1"></a>  , html</span>
+<span id="cb1-111"><a href="#cb1-111" aria-hidden="true" tabindex="-1"></a>  ]</span></code></pre></div>
+<h2 id="page">Page</h2>
+<p>This is how these <a href="https://www.taezos.org/piq9117/notes-examples/src/branch/master/halogen-routing/src/Page">pages</a> are defined. These components will
+render the text <strong>Home</strong> and <strong>About</strong>. In a non-trivial application, these
+components will hold several components to form a “page”, but for simplicity I
+left them off to just render text inside an <code class="codeLine">h1</code>.</p>
+<h2 id="route">Route</h2>
+<p>The key thing here is the <code class="codeLine">Route</code> sum type. These are all the
+possible routes in the application. The rest of the code is for
+<a href="https://github.com/natefaubion/purescript-routing-duplex">routing-duplex</a> to help me encode and decode the routes. The
+routes can be directly written as strings but I prefer the safety of types.
+Plus, the string definition only stays here. So this lessens the fishing
+later on <strong>if ever there is</strong> a bug in the routing.</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">module</span> <span class="dt">Service.Route</span> <span class="kw">where</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Prelude</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Data.Generic.Rep</span> ( class <span class="dt">Generic</span> )</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Data.Generic.Rep.Show</span> ( genericShow )</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a><span class="co">-- Routing</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Routing.Duplex</span> ( <span class="dt">RouteDuplex'</span>, root )</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Routing.Duplex.Generic</span> ( noArgs, sum )</span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Routing.Duplex.Generic.Syntax</span> ((/))</span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a><span class="co">-- All possible routes in the application</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">Route</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>  <span class="ot">=</span> <span class="dt">Home</span></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>  <span class="op">|</span> <span class="dt">About</span></span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>derive <span class="kw">instance</span><span class="ot"> genericRoute ::</span> <span class="dt">Generic</span> <span class="dt">Route</span> _</span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>derive <span class="kw">instance</span><span class="ot"> eqRoute ::</span> <span class="dt">Eq</span> <span class="dt">Route</span></span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>derive <span class="kw">instance</span><span class="ot"> ordRoute ::</span> <span class="dt">Ord</span> <span class="dt">Route</span></span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a><span class="kw">instance</span><span class="ot"> showRoute ::</span> <span class="dt">Show</span> <span class="dt">Route</span> <span class="kw">where</span></span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a>  <span class="fu">show</span> <span class="ot">=</span> genericShow</span>
+<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a><span class="ot">routeCodec ::</span> <span class="dt">RouteDuplex'</span> <span class="dt">Route</span></span>
+<span id="cb2-24"><a href="#cb2-24" aria-hidden="true" tabindex="-1"></a>routeCodec <span class="ot">=</span> root <span class="op">$</span> <span class="fu">sum</span></span>
+<span id="cb2-25"><a href="#cb2-25" aria-hidden="true" tabindex="-1"></a>  { <span class="st">&quot;Home&quot;</span><span class="op">:</span> noArgs</span>
+<span id="cb2-26"><a href="#cb2-26" aria-hidden="true" tabindex="-1"></a>  , <span class="st">&quot;About&quot;</span><span class="op">:</span> <span class="st">&quot;about&quot;</span> <span class="op">/</span> noArgs</span>
+<span id="cb2-27"><a href="#cb2-27" aria-hidden="true" tabindex="-1"></a>  }</span></code></pre></div>
+<h2 id="navigation">Navigation</h2>
+<p>Navigation capbility of this app is defined in a type class. This technique is
+known as <a href="https://jproyo.github.io/posts/2019-03-17-tagless-final-haskell.html">tagless-final-encoding</a>. It’s a technique
+where we define a capability or method without concrete implementations and only
+a small set of requirements. In this case, the minimum requirement is it needs to
+be a <code class="codeLine">Monad</code>. Then, an instance for <code class="codeLine">HalogenM</code> is defined
+here to save us from calling <code class="codeLine">lift</code> everywhere inside the action (e.g
+<code class="codeLine">lift $ navigate Home</code>).</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">module</span> <span class="dt">Service.Navigate</span> <span class="kw">where</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Prelude</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="co">-- Internal Route</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Service.Route</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a><span class="co">-- Halogen</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Halogen</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> <span class="dt">Monad</span> m <span class="op">&lt;=</span> <span class="dt">Navigate</span> m <span class="kw">where</span></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a><span class="ot">  navigate ::</span> <span class="dt">Route</span> <span class="ot">-&gt;</span> m <span class="dt">Unit</span></span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a><span class="kw">instance</span><span class="ot"> navigateHalogenM ::</span> <span class="dt">Navigate</span> m <span class="ot">=&gt;</span> <span class="dt">Navigate</span> ( <span class="dt">HalogenM</span> state action slots msg m ) <span class="kw">where</span></span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a>  navigate <span class="ot">=</span> lift <span class="op">&lt;&lt;&lt;</span> navigate</span></code></pre></div>
+<h2 id="appm">AppM</h2>
+<p><code class="codeLine">AppM</code> is a custom application monad that will provide concrete
+implementation for the capabilities, in this case it will only implement
+<code class="codeLine">Navigation</code>. As you’ll notice this only provides a natural
+transformation from <code class="codeLine">AppM</code> to <code class="codeLine">Aff</code>. In a typical
+application this will wrap the <a href="https://www.fpcomplete.com/blog/2017/06/readert-design-pattern">ReaderT pattern</a>. This is also
+the technique used in the <a href="https://github.com/thomashoneyman/purescript-halogen-realworld">halogen real world example</a>. I
+learned about this pattern <a href="https://www.parsonsmatt.org/2018/03/22/three_layer_haskell_cake.html">here</a>.</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="kw">module</span> <span class="dt">AppM</span> <span class="kw">where</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Prelude</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="co">-- Internal Service</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Service.Navigate</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Service.Route</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a><span class="co">-- Effect</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Effect.Class</span> ( class <span class="dt">MonadEffect</span>, liftEffect )</span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a><span class="co">-- Aff</span></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Effect.Aff</span> ( <span class="dt">Aff</span> )</span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Effect.Aff.Class</span> ( class <span class="dt">MonadAff</span> )</span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a><span class="co">-- Routing</span></span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Routing.Hash</span> ( setHash )</span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Routing.Duplex</span> ( print )</span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a><span class="kw">newtype</span> <span class="dt">AppM</span> a <span class="ot">=</span> <span class="dt">AppM</span> ( <span class="dt">Aff</span> a )</span>
+<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-18"><a href="#cb4-18" aria-hidden="true" tabindex="-1"></a><span class="ot">runAppM ::</span> <span class="dt">AppM</span> <span class="op">~&gt;</span> <span class="dt">Aff</span></span>
+<span id="cb4-19"><a href="#cb4-19" aria-hidden="true" tabindex="-1"></a>runAppM ( <span class="dt">AppM</span> m ) <span class="ot">=</span> m</span>
+<span id="cb4-20"><a href="#cb4-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-21"><a href="#cb4-21" aria-hidden="true" tabindex="-1"></a>derive <span class="kw">newtype</span> <span class="kw">instance</span><span class="ot"> functorAppM ::</span> <span class="dt">Functor</span> <span class="dt">AppM</span></span>
+<span id="cb4-22"><a href="#cb4-22" aria-hidden="true" tabindex="-1"></a>derive <span class="kw">newtype</span> <span class="kw">instance</span><span class="ot"> applyAppM ::</span> <span class="dt">Apply</span> <span class="dt">AppM</span></span>
+<span id="cb4-23"><a href="#cb4-23" aria-hidden="true" tabindex="-1"></a>derive <span class="kw">newtype</span> <span class="kw">instance</span><span class="ot"> applicativeAppM ::</span> <span class="dt">Applicative</span> <span class="dt">AppM</span></span>
+<span id="cb4-24"><a href="#cb4-24" aria-hidden="true" tabindex="-1"></a>derive <span class="kw">newtype</span> <span class="kw">instance</span><span class="ot"> bindAppM ::</span> <span class="dt">Bind</span> <span class="dt">AppM</span></span>
+<span id="cb4-25"><a href="#cb4-25" aria-hidden="true" tabindex="-1"></a>derive <span class="kw">newtype</span> <span class="kw">instance</span><span class="ot"> monadAppM ::</span> <span class="dt">Monad</span> <span class="dt">AppM</span></span>
+<span id="cb4-26"><a href="#cb4-26" aria-hidden="true" tabindex="-1"></a>derive <span class="kw">newtype</span> <span class="kw">instance</span><span class="ot"> monadEffectAppM ::</span> <span class="dt">MonadEffect</span> <span class="dt">AppM</span></span>
+<span id="cb4-27"><a href="#cb4-27" aria-hidden="true" tabindex="-1"></a>derive <span class="kw">newtype</span> <span class="kw">instance</span><span class="ot"> monadAffAppM ::</span> <span class="dt">MonadAff</span> <span class="dt">AppM</span></span>
+<span id="cb4-28"><a href="#cb4-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-29"><a href="#cb4-29" aria-hidden="true" tabindex="-1"></a><span class="kw">instance</span><span class="ot"> navigateAppM ::</span> <span class="dt">Navigate</span> <span class="dt">AppM</span> <span class="kw">where</span></span>
+<span id="cb4-30"><a href="#cb4-30" aria-hidden="true" tabindex="-1"></a>  navigate <span class="ot">=</span> liftEffect <span class="op">&lt;&lt;&lt;</span> setHash <span class="op">&lt;&lt;&lt;</span> <span class="fu">print</span> routeCodec</span></code></pre></div>
+<h2 id="main">Main</h2>
+<p>Finally, the <code class="codeLine">Main</code> module. This is where the application is ran.
+This is also the place where the browser’s route is observed. Whenever the route
+changes the callback of <code class="codeLine">matchesWith</code> will be called. This callback
+will query the router component with <code class="codeLine">Navigate</code> passing the
+<code class="codeLine">new</code> route.</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="kw">module</span> <span class="dt">Main</span> <span class="kw">where</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Prelude</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Data.Maybe</span> ( <span class="dt">Maybe</span>(..) )</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a><span class="co">-- Internal</span></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">AppM</span> ( runAppM )</span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a><span class="co">-- Internal Components</span></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Component.Router</span> <span class="kw">as</span> <span class="dt">Router</span></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a><span class="co">-- Internal Service</span></span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Service.Route</span></span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a><span class="co">-- Effect</span></span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Effect</span> ( <span class="dt">Effect</span> )</span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Effect.Class</span> ( liftEffect )</span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a><span class="co">-- Aff</span></span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Effect.Aff</span> ( <span class="dt">Aff</span>, launchAff_ )</span>
+<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a><span class="co">-- Routing</span></span>
+<span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Routing.Duplex</span> ( parse )</span>
+<span id="cb5-18"><a href="#cb5-18" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Routing.Hash</span> ( matchesWith )</span>
+<span id="cb5-19"><a href="#cb5-19" aria-hidden="true" tabindex="-1"></a><span class="co">-- Halogen</span></span>
+<span id="cb5-20"><a href="#cb5-20" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Halogen</span> <span class="kw">as</span> <span class="dt">H</span></span>
+<span id="cb5-21"><a href="#cb5-21" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Halogen.HTML</span> <span class="kw">as</span> <span class="dt">HH</span></span>
+<span id="cb5-22"><a href="#cb5-22" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Halogen.Aff</span> <span class="kw">as</span> <span class="dt">HA</span></span>
+<span id="cb5-23"><a href="#cb5-23" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Halogen.VDom.Driver</span> ( runUI )</span>
+<span id="cb5-24"><a href="#cb5-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-25"><a href="#cb5-25" aria-hidden="true" tabindex="-1"></a><span class="ot">main ::</span> <span class="dt">Effect</span> <span class="dt">Unit</span></span>
+<span id="cb5-26"><a href="#cb5-26" aria-hidden="true" tabindex="-1"></a>main <span class="ot">=</span> HA.runHalogenAff <span class="kw">do</span></span>
+<span id="cb5-27"><a href="#cb5-27" aria-hidden="true" tabindex="-1"></a>  body <span class="ot">&lt;-</span> HA.awaitBody</span>
+<span id="cb5-28"><a href="#cb5-28" aria-hidden="true" tabindex="-1"></a>  <span class="kw">let</span></span>
+<span id="cb5-29"><a href="#cb5-29" aria-hidden="true" tabindex="-1"></a><span class="ot">    rootComponent ::</span> <span class="dt">H.Component</span> <span class="dt">HH.HTML</span> <span class="dt">Router.Query</span> {} <span class="dt">Void</span> <span class="dt">Aff</span></span>
+<span id="cb5-30"><a href="#cb5-30" aria-hidden="true" tabindex="-1"></a>    rootComponent <span class="ot">=</span> H.hoist runAppM Router.component</span>
+<span id="cb5-31"><a href="#cb5-31" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-32"><a href="#cb5-32" aria-hidden="true" tabindex="-1"></a>  <span class="co">-- Run the application</span></span>
+<span id="cb5-33"><a href="#cb5-33" aria-hidden="true" tabindex="-1"></a>  halogenIO <span class="ot">&lt;-</span> runUI rootComponent {} body</span>
+<span id="cb5-34"><a href="#cb5-34" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-35"><a href="#cb5-35" aria-hidden="true" tabindex="-1"></a>  <span class="co">-- Listen to the route changes.</span></span>
+<span id="cb5-36"><a href="#cb5-36" aria-hidden="true" tabindex="-1"></a>  void <span class="op">$</span> liftEffect <span class="op">$</span> matchesWith ( parse routeCodec ) \mOld new <span class="ot">-&gt;</span></span>
+<span id="cb5-37"><a href="#cb5-37" aria-hidden="true" tabindex="-1"></a>    when ( mOld <span class="op">/=</span> <span class="dt">Just</span> new ) <span class="kw">do</span></span>
+<span id="cb5-38"><a href="#cb5-38" aria-hidden="true" tabindex="-1"></a>      launchAff_ <span class="op">$</span> halogenIO<span class="op">.</span>query <span class="op">$</span> H.tell <span class="op">$</span> <span class="dt">Router.Navigate</span> new</span>
+<span id="cb5-39"><a href="#cb5-39" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pure</span> unit</span></code></pre></div>
+<h2 id="sources">Sources</h2>
+<p><a href="https://github.com/thomashoneyman/purescript-halogen-realworld">Purescript Halogen Realworld Example</a></p>
+<p><a href="https://jproyo.github.io/posts/2019-03-17-tagless-final-haskell.html">Tagless Final Encoding</a></p>
+<p><a href="https://www.fpcomplete.com/blog/2017/06/readert-design-pattern">ReaderT Design Pattern</a></p>
+<p><a href="https://www.parsonsmatt.org/2018/03/22/three_layer_haskell_cake.html">Three Layer Haskell Cake</a></p>
+    </section>
+</article>
+
+        </main>
+
+        <footer>
+            Site proudly generated by
+            <a href="http://jaspervdj.be/hakyll">Hakyll</a>
+        </footer>
+    </body>
+</html>

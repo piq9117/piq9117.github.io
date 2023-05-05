@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="x-ua-compatible" content="ie=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>piq9117 - Haskell - Enforcing Naming Convention with Parsec</title>
+        <link href="https://fonts.googleapis.com/css?family=Nanum+Gothic+Coding&display=swap" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css?family=EB+Garamond&display=swap" rel="stylesheet">
+        <link rel="stylesheet" href="../css/default.css" />
+    </head>
+    <body>
+        <header>
+            <div class="logo">
+                <a href="../">piq9117</a>
+            </div>
+            <nav>
+                <a href="../">home</a>
+                <a href="../about.html">about</a>
+                <a href="../contact.html">contact</a>
+            </nav>
+        </header>
+
+        <main role="main">
+            <h1>Haskell - Enforcing Naming Convention with Parsec</h1>
+            <article>
+    <section class="header">
+        Posted on September  4, 2020
+        
+    </section>
+    <section>
+        <p>In my project <a href="https://taezos.org/taezos/migratum">migratum</a> I wanted to enforce a naming convention like this</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">V</span><span class="op">&lt;</span>version number<span class="op">&gt;</span>__<span class="op">&lt;</span>file name<span class="op">&gt;</span>.sql</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="ex">+</span>       +         +     +     + +</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="kw">|</span>       <span class="kw">|</span>         <span class="kw">|</span>     <span class="kw">|</span>     <span class="kw">|</span> <span class="kw">|</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="kw">|</span>       <span class="kw">|</span>         <span class="kw">|</span>     <span class="kw">|</span>     <span class="kw">|</span> <span class="ex">v</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="kw">|</span>       <span class="kw">|</span>         <span class="kw">|</span>     <span class="kw">|</span>     <span class="kw">|</span> <span class="ex">Enforce</span> sql extension.</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="kw">|</span>       <span class="kw">|</span>         <span class="kw">|</span>     <span class="kw">|</span>     <span class="ex">v</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="kw">|</span>       <span class="kw">|</span>         <span class="kw">|</span>     <span class="kw">|</span>     <span class="ex">Enforce</span> this dot to indicate the end of the file name.</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="kw">|</span>       <span class="kw">|</span>         <span class="kw">|</span>     <span class="ex">v</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="kw">|</span>       <span class="kw">|</span>         <span class="kw">|</span>     <span class="ex">File</span> name need to be alpha numeric. No other symbols, except underscore</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="kw">|</span>       <span class="kw">|</span>         <span class="ex">v</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="kw">|</span>       <span class="kw">|</span>         <span class="ex">Enforce</span> the double underscore</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="kw">|</span>       <span class="ex">v</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="kw">|</span>       <span class="ex">Version</span> number have to be numbers.</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="ex">v</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a><span class="ex">Enforce</span> the V character to signify <span class="st">&quot;version&quot;</span></span></code></pre></div>
+<p>Ways I can accomplish these is with</p>
+<ul>
+<li>Regex</li>
+<li>Parser Combinators</li>
+</ul>
+<p>I’m not sure how to do this with regex because to be honest, I know very simple
+regex and I don’t have a <a href="https://regexlicensing.org/">regex license</a>. I’m decent with parser
+combinators and plus it’s the title of this blog post, so that’s what I’m
+going to use to accomplish the task I set out for.</p>
+<p>Parser combinators really shine when you parse something recursive like
+<code class="codeLine">json</code>. You know how <code class="codeLine">json</code> can contain an array and objects
+and then these objects and arrays can contain arrays and objects, so on and so
+forth? Yeah, parser combinators are really neat for that. So don’t judge parser
+combinators solely on this blog post. I chose parser combinators because it’s
+my go-to method for parsing, and I personally think they’re convenient.</p>
+<p>Before we touch parsing, let’s create a type representation of the file name based
+on the ascii diagram above.</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">FilenameStructure</span> </span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  <span class="ot">=</span> <span class="dt">FilenameStructure</span> <span class="dt">FileVersion</span> <span class="dt">Underscore</span> <span class="dt">Underscore</span> <span class="dt">FileName</span> <span class="dt">Dot</span> <span class="dt">FileExtension</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  <span class="kw">deriving</span> ( <span class="dt">Eq</span>, <span class="dt">Show</span> )</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a><span class="kw">newtype</span> <span class="dt">FileVersion</span> <span class="ot">=</span> <span class="dt">FileVersion</span> <span class="dt">Text</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>  <span class="kw">deriving</span> ( <span class="dt">Eq</span>, <span class="dt">Show</span> )</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a><span class="kw">newtype</span> <span class="dt">Underscore</span> <span class="ot">=</span> <span class="dt">Underscore</span> <span class="dt">Text</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>  <span class="kw">deriving</span> ( <span class="dt">Eq</span>, <span class="dt">Show</span> )</span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a><span class="kw">newtype</span> <span class="dt">FileName</span> <span class="ot">=</span> <span class="dt">FileName</span> <span class="dt">Text</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>  <span class="kw">deriving</span> ( <span class="dt">Eq</span>, <span class="dt">Show</span> )</span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a><span class="kw">newtype</span> <span class="dt">Dot</span> <span class="ot">=</span> <span class="dt">Dot</span> <span class="dt">Text</span></span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>  <span class="kw">deriving</span> ( <span class="dt">Eq</span>, <span class="dt">Show</span> )</span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a><span class="kw">newtype</span> <span class="dt">FileExtension</span> <span class="ot">=</span> <span class="dt">FileExtension</span> <span class="dt">Text</span></span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>  <span class="kw">deriving</span> ( <span class="dt">Eq</span>, <span class="dt">Show</span> )</span></code></pre></div>
+<p>Now, we can focus on specific segments of the file name instead of thinking of
+parsing the entire file name. I think that makes it a bit easier. At least to me
+it does. I can think of parsing the file version, underscore, filename, etc individually.</p>
+<p>Let’s start with the imports. Popular libraries that come to mind are parsec,
+megaparsec, and attoparsec. Evaluate which one suits your project, but on this
+blog post we’re using parsec.</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co">-- parsec</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span>           <span class="dt">Text.ParserCombinators.Parsec</span> (<span class="dt">GenParser</span>, <span class="dt">ParseError</span>)</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="kw">qualified</span> <span class="dt">Text.ParserCombinators.Parsec</span> <span class="kw">as</span> <span class="dt">Parsec</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="co">-- text</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="kw">qualified</span> <span class="dt">Data.Text</span>                     <span class="kw">as</span> <span class="dt">T</span></span></code></pre></div>
+<p>Let’s start with the file version parser. Our convention says that we need to
+start with the character <code class="codeLine">V</code>, then it should be followed by numbers.</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="ot">fileVersionParser ::</span> <span class="dt">GenParser</span> <span class="dt">Char</span> st <span class="dt">FileVersion</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>fileVersionParser <span class="ot">=</span> <span class="kw">do</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>  vChar <span class="ot">&lt;-</span> Parsec.char <span class="ch">'V'</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>  vNum <span class="ot">&lt;-</span> Parsec.digit</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pure</span> <span class="op">$</span> <span class="dt">FileVersion</span> <span class="op">$</span> T.pack <span class="op">$</span> ( vChar <span class="op">:</span> vNum <span class="op">:</span> [] )</span></code></pre></div>
+<p>If we try this in <code class="codeLine">ghci</code> it will look like this</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="ex">ghci</span><span class="op">&gt;</span> import Text.ParserCombinators.Parsec</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="ex">ghci</span><span class="op">&gt;</span> parse fileVersion <span class="st">&quot;&quot;</span> <span class="st">&quot;V69&quot;</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="ex">ghci</span><span class="op">&gt;</span> Right <span class="er">(</span> <span class="ex">FileVersion</span> <span class="st">&quot;V69&quot;</span> <span class="kw">)</span></span></code></pre></div>
+<p>That’s what we want, to match <code class="codeLine">Right</code> and return our <code>FileVersion</code> with
+the text “V69”.</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="ex">ghci</span><span class="op">&gt;</span> parse fileVersion <span class="st">&quot;&quot;</span> <span class="st">&quot;Vwhat&quot;</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="ex">ghci</span><span class="op">&gt;</span> Left <span class="er">(</span><span class="ex">line</span> 1, column2<span class="kw">)</span><span class="bu">:</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a><span class="ex">unexpected</span> <span class="st">&quot;w&quot;</span></span></code></pre></div>
+<p>That’s right, it should fail when there’s no version number.</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="ex">ghci</span><span class="op">&gt;</span> parse fileVersion <span class="st">&quot;&quot;</span> <span class="st">&quot;V1what&quot;</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="ex">ghci</span><span class="op">&gt;</span> Right <span class="er">(</span> <span class="ex">FileVersion</span> <span class="st">&quot;V1&quot;</span> <span class="kw">)</span></span></code></pre></div>
+<p>It drops the input that isn’t a number.</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="ex">ghci</span><span class="op">&gt;</span> parse fileVersion <span class="st">&quot;&quot;</span> <span class="st">&quot;what&quot;</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="ex">ghci</span><span class="op">&gt;</span> Left <span class="er">(</span><span class="ex">line</span> 1, column 1<span class="kw">)</span><span class="bu">:</span></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="ex">unexpected</span> <span class="st">&quot;w&quot;</span></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a><span class="ex">expecting</span> <span class="st">&quot;V&quot;</span></span></code></pre></div>
+<p>Finally, it will fail if it doesn’t find the “V” character.</p>
+<p>Woohoo! One parser down, four to go!</p>
+<p>Let’s do the rest of the parsers, and feel free to try these out in <code class="codeLine">ghci</code>.</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="ot">underscoreParser ::</span> <span class="dt">GenParser</span> <span class="dt">Char</span> st <span class="dt">Underscore</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>underscoreParser <span class="ot">=</span> <span class="dt">Underscore</span> <span class="op">.</span> T.pack <span class="op">.</span> <span class="fu">pure</span> <span class="op">&lt;$&gt;</span> Parsec.satisfy isUnderscore</span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a><span class="ot">isUnderscore ::</span> <span class="dt">Char</span> <span class="ot">-&gt;</span> <span class="dt">Bool</span></span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>isUnderscore char <span class="ot">=</span> <span class="fu">any</span> ( char<span class="op">==</span> ) ( <span class="st">&quot;_&quot;</span><span class="ot"> ::</span> <span class="dt">String</span> )</span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a><span class="ot">fileNameParser ::</span> <span class="dt">GenParser</span> <span class="dt">Char</span> st <span class="dt">FileName</span></span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a>fileNameParser <span class="ot">=</span> <span class="dt">FileName</span> <span class="op">.</span> T.pack </span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a>  <span class="op">&lt;$&gt;</span> Parsec.many ( Parsec.alphaNum <span class="op">&lt;|&gt;</span> Parsec.satisfy isUnderscore )</span>
+<span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-11"><a href="#cb9-11" aria-hidden="true" tabindex="-1"></a><span class="ot">dotParser ::</span> <span class="dt">GenParser</span> <span class="dt">Char</span> st <span class="dt">Dot</span></span>
+<span id="cb9-12"><a href="#cb9-12" aria-hidden="true" tabindex="-1"></a>dotParser <span class="ot">=</span> <span class="dt">Dot</span> <span class="op">.</span> T.pack <span class="op">.</span> <span class="fu">pure</span> <span class="op">&lt;$&gt;</span> Parser.char <span class="ch">'.'</span></span>
+<span id="cb9-13"><a href="#cb9-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-14"><a href="#cb9-14" aria-hidden="true" tabindex="-1"></a><span class="ot">fileExtensionParser ::</span> <span class="dt">GenParser</span> <span class="dt">Char</span> st <span class="dt">FileExtension</span></span>
+<span id="cb9-15"><a href="#cb9-15" aria-hidden="true" tabindex="-1"></a>fileExtensionParser <span class="ot">=</span> <span class="dt">FileExtension</span><span class="op">.</span> T.pack <span class="op">&lt;$&gt;</span> Parsec.string <span class="st">&quot;sql&quot;</span></span></code></pre></div>
+<p>Then, to create a parser for the whole file name we combine the rest of our parsers.</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="ot">filenameStructureParser ::</span> <span class="dt">GenParser</span> <span class="dt">Char</span> st <span class="dt">FilenameStructure</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>filenameStructureParser <span class="ot">=</span> <span class="dt">FilenameStructure</span></span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>  <span class="op">&lt;$&gt;</span> fileVersionParser</span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>  <span class="op">&lt;*&gt;</span> underscoreParser</span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>  <span class="op">&lt;*&gt;</span> underscoreParser</span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>  <span class="op">&lt;*&gt;</span> fileNameParser</span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a>  <span class="op">&lt;*&gt;</span> dotParser</span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a>  <span class="op">&lt;*&gt;</span> fileExtensionParser</span></code></pre></div>
+<p>We can also do this with the <code class="codeLine">do</code> syntax if that’s more convenient.</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="ot">filenameStructureParser ::</span> <span class="dt">GenParser</span> <span class="dt">Char</span> st <span class="dt">FilenameStructure</span></span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>filenameStructureParser <span class="ot">=</span> <span class="kw">do</span></span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>  version <span class="ot">&lt;-</span> fileVersionParser</span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>  u1 <span class="ot">&lt;-</span> underscoreParser</span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>  u2 <span class="ot">&lt;-</span> underscoreParser</span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>  fileName <span class="ot">&lt;-</span> fileNameParser</span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a>  dot <span class="ot">&lt;-</span> dotParser</span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a>  ext <span class="ot">&lt;-</span> fileExtensionParser</span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pure</span> <span class="op">$</span> <span class="dt">FilenameStructure</span> version u1 u2 fileName dot ext</span></code></pre></div>
+<p>Finally, our parser “runner”</p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="ot">namingConvention ::</span> <span class="dt">String</span> <span class="ot">-&gt;</span> <span class="dt">Either</span> <span class="dt">ParseError</span> <span class="dt">FilenameStructure</span></span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>namingConvention <span class="ot">=</span> </span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>  Parsec.parse filenameStructureParser <span class="st">&quot;Error: Not following naming convention&quot;</span></span></code></pre></div>
+<p>Instead of manually trying them out in <code class="codeLine">ghci</code> we can instead do some
+unit testing. So we don’t have to keep messing with the terminal.</p>
+<div class="sourceCode" id="cb13"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="kw">module</span> <span class="dt">NamingConventionSpec</span> <span class="kw">where</span></span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Test.Hspec</span></span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a><span class="ot">spec ::</span> <span class="dt">Spec</span></span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>spec <span class="ot">=</span> <span class="kw">do</span></span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a>  desribe <span class="st">&quot;Filename&quot;</span> <span class="op">$</span> <span class="kw">do</span></span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a>    it <span class="st">&quot;follows naming convention&quot;</span> <span class="op">$</span> <span class="kw">do</span></span>
+<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a>      successResult <span class="ot">&lt;-</span> <span class="fu">pure</span> <span class="op">$</span> namingConvention <span class="st">&quot;V1__uuid_extension.sql&quot;</span></span>
+<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a>      emptyFileName <span class="ot">&lt;-</span> <span class="fu">pure</span> <span class="op">$</span> namingConvention <span class="st">&quot;&quot;</span></span>
+<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a>      noExtension <span class="ot">&lt;-</span> <span class="fu">pure</span> <span class="op">$</span> namingConvention <span class="st">&quot;V1__uuid_extension&quot;</span></span>
+<span id="cb13-12"><a href="#cb13-12" aria-hidden="true" tabindex="-1"></a>      noVersion <span class="ot">&lt;-</span> <span class="fu">pure</span> <span class="op">$</span> namingConvention <span class="st">&quot;uuid_extension.sql&quot;</span></span>
+<span id="cb13-13"><a href="#cb13-13" aria-hidden="true" tabindex="-1"></a>      upperCaseFileName <span class="ot">&lt;-</span> <span class="fu">pure</span> <span class="op">$</span> namingConvention <span class="st">&quot;V1_UUID_extension.sql&quot;</span></span>
+<span id="cb13-14"><a href="#cb13-14" aria-hidden="true" tabindex="-1"></a>      symbolFileName <span class="ot">&lt;-</span> <span class="fu">pure</span> <span class="op">$</span> namingConvention <span class="st">&quot;V1_UUID+extension.sql&quot;</span></span>
+<span id="cb13-15"><a href="#cb13-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-16"><a href="#cb13-16" aria-hidden="true" tabindex="-1"></a>      <span class="co">-- success cases</span></span>
+<span id="cb13-17"><a href="#cb13-17" aria-hidden="true" tabindex="-1"></a>      shouldBe successResult ( <span class="dt">Right</span> <span class="st">&quot;V1__uuid_extension.sql&quot;</span> )</span>
+<span id="cb13-18"><a href="#cb13-18" aria-hidden="true" tabindex="-1"></a>      shouldBe upperCaseFileName ( <span class="dt">Right</span> <span class="st">&quot;V1__UUID+extension.sql&quot;</span> )</span>
+<span id="cb13-19"><a href="#cb13-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-20"><a href="#cb13-20" aria-hidden="true" tabindex="-1"></a>      <span class="co">-- failure cases</span></span>
+<span id="cb13-21"><a href="#cb13-21" aria-hidden="true" tabindex="-1"></a>      shouldBe ( isLeft emptyFileName ) <span class="dt">True</span></span>
+<span id="cb13-22"><a href="#cb13-22" aria-hidden="true" tabindex="-1"></a>      shouldBe ( isLeft noFileExt ) <span class="dt">True</span></span>
+<span id="cb13-23"><a href="#cb13-23" aria-hidden="true" tabindex="-1"></a>      shouldBe ( isLeft noVersion ) <span class="dt">True</span></span>
+<span id="cb13-24"><a href="#cb13-24" aria-hidden="true" tabindex="-1"></a>      shouldBe ( isLeft symbolFilename ) <span class="dt">True</span></span></code></pre></div>
+<p>Now that we have our parser we can use it check for duplicates, because our types
+have an <code class="codeLine">Eq</code> instance we can do equality checking.</p>
+<div class="sourceCode" id="cb14"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="ot">fileVersion ::</span> <span class="dt">FilenameStructure</span> <span class="ot">-&gt;</span> <span class="dt">FileVersion</span></span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>fileVersion ( <span class="dt">FilenameStructure</span> v _ _ _ _ _ ) <span class="ot">=</span> v</span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a><span class="ot">getVersion ::</span> <span class="dt">Either</span> <span class="dt">ParseError</span> <span class="dt">FilenameStructure</span> <span class="ot">-&gt;</span> <span class="dt">Either</span> <span class="dt">ParseError</span> <span class="dt">FileVersion</span></span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a>getVersion res <span class="ot">=</span> <span class="kw">case</span> res <span class="kw">of</span></span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a>  <span class="dt">Left</span> err <span class="ot">-&gt;</span> <span class="dt">Left</span> err</span>
+<span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a>  <span class="dt">Right</span> fs <span class="ot">-&gt;</span> <span class="dt">Right</span> <span class="op">$</span> fileVersion fs</span>
+<span id="cb14-8"><a href="#cb14-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-9"><a href="#cb14-9" aria-hidden="true" tabindex="-1"></a><span class="ot">checkDuplicate ::</span> [ <span class="dt">String</span> ] <span class="ot">-&gt;</span> <span class="dt">Either</span> <span class="dt">ParseError</span> [ <span class="dt">String</span> ]</span>
+<span id="cb14-10"><a href="#cb14-10" aria-hidden="true" tabindex="-1"></a>checkDuplicate filenames <span class="ot">=</span> <span class="kw">do</span></span>
+<span id="cb14-11"><a href="#cb14-11" aria-hidden="true" tabindex="-1"></a>  versions <span class="ot">&lt;-</span> <span class="fu">traverse</span> getVersion ( namingConvention <span class="op">&lt;$&gt;</span> filenames )</span>
+<span id="cb14-12"><a href="#cb14-12" aria-hidden="true" tabindex="-1"></a>  <span class="kw">if</span> anySame versions</span>
+<span id="cb14-13"><a href="#cb14-13" aria-hidden="true" tabindex="-1"></a>    <span class="co">-- Express your errors however you want, this is just to show that this is </span></span>
+<span id="cb14-14"><a href="#cb14-14" aria-hidden="true" tabindex="-1"></a>    <span class="co">-- the error branch.</span></span>
+<span id="cb14-15"><a href="#cb14-15" aria-hidden="true" tabindex="-1"></a>    <span class="kw">then</span> <span class="fu">error</span> <span class="st">&quot;Duplicate migration file&quot;</span></span>
+<span id="cb14-16"><a href="#cb14-16" aria-hidden="true" tabindex="-1"></a>    <span class="kw">else</span> <span class="dt">Right</span> filenames</span>
+<span id="cb14-17"><a href="#cb14-17" aria-hidden="true" tabindex="-1"></a>  <span class="kw">where</span></span>
+<span id="cb14-18"><a href="#cb14-18" aria-hidden="true" tabindex="-1"></a><span class="ot">    anySame ::</span> <span class="dt">Eq</span> a <span class="ot">=&gt;</span> [ a ] <span class="ot">-&gt;</span> <span class="dt">Bool</span></span>
+<span id="cb14-19"><a href="#cb14-19" aria-hidden="true" tabindex="-1"></a>    anySame <span class="ot">=</span> isSeen []</span>
+<span id="cb14-20"><a href="#cb14-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-21"><a href="#cb14-21" aria-hidden="true" tabindex="-1"></a><span class="ot">    isSeen ::</span> <span class="dt">Eq</span> a <span class="ot">=&gt;</span> [ a ] <span class="ot">-&gt;</span> [ a ] <span class="ot">-&gt;</span> <span class="dt">Bool</span></span>
+<span id="cb14-22"><a href="#cb14-22" aria-hidden="true" tabindex="-1"></a>    isSeen seen ( x<span class="op">:</span>xs ) <span class="ot">=</span> x <span class="ot">`elem`</span> seen <span class="op">||</span> isSeen ( x<span class="op">:</span>seen ) xs</span>
+<span id="cb14-23"><a href="#cb14-23" aria-hidden="true" tabindex="-1"></a>    isSeen _ [] <span class="ot">=</span> <span class="dt">False</span></span></code></pre></div>
+<p>When creating your parsers, avoid doing any validation or any “smart” logic.
+Concentrate on parsing the input and nothing more. Once you have your parsers
+then you can do whatever you want with the output.</p>
+<h1 id="references">References</h1>
+<p><a href="https://haskellbook.com/">Haskell from First Principles</a></p>
+<p><a href="http://www.cs.nott.ac.uk/~pszgmh/monparsing.pdf">Monadic Parser Combinators</a></p>
+    </section>
+</article>
+
+        </main>
+
+        <footer>
+            Site proudly generated by
+            <a href="http://jaspervdj.be/hakyll">Hakyll</a>
+        </footer>
+    </body>
+</html>

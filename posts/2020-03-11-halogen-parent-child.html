@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="x-ua-compatible" content="ie=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>piq9117 - Purescript - Parent - Child Components in Halogen</title>
+        <link href="https://fonts.googleapis.com/css?family=Nanum+Gothic+Coding&display=swap" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css?family=EB+Garamond&display=swap" rel="stylesheet">
+        <link rel="stylesheet" href="../css/default.css" />
+    </head>
+    <body>
+        <header>
+            <div class="logo">
+                <a href="../">piq9117</a>
+            </div>
+            <nav>
+                <a href="../">home</a>
+                <a href="../about.html">about</a>
+                <a href="../contact.html">contact</a>
+            </nav>
+        </header>
+
+        <main role="main">
+            <h1>Purescript - Parent - Child Components in Halogen</h1>
+            <article>
+    <section class="header">
+        Posted on March 11, 2020
+        
+    </section>
+    <section>
+        <p>Parent-Child component communication is already part of the halogen
+<a href="https://github.com/purescript-halogen/purescript-halogen/tree/master/examples/components">examples</a> and <a href="https://github.com/purescript-halogen/purescript-halogen/blob/master/docs/5%20-%20Parent%20and%20child%20components.md">guide</a>.
+This entry is just my own understanding of how Parent-Child component
+communication works.</p>
+<h1 id="rendering">Rendering</h1>
+<p>Let’s start with rendering a child component inside a parent component. In other
+frameworks this is called transclusion/multitransclusion (angular), slots (vue),
+and in react I think it’s called component composition. In Halogen, this can be
+acheived with what they call <code class="codeLine">Child Slots</code>. The concept is pretty similar
+to existing front end frameworks.</p>
+<h3 id="child-component">Child component</h3>
+<p>Let’s define the child component.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">module</span> <span class="dt">Component.Child</span> <span class="kw">where</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Prelude</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="co">-- Halogen</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Halogen</span> <span class="kw">as</span> <span class="dt">H</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Halogen.HTML</span> <span class="kw">as</span> <span class="dt">HH</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="dt">Slot</span> <span class="ot">=</span> <span class="kw">forall</span> query<span class="op">.</span> <span class="dt">H.Slot</span> query <span class="dt">Void</span> <span class="dt">Unit</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="ot">component ::</span> <span class="kw">forall</span> q i o m<span class="op">.</span> <span class="dt">H.Component</span> <span class="dt">HH.HTML</span> q i o m</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>component <span class="ot">=</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>  H.mkComponent</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>  { initialState<span class="op">:</span> identity</span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>  , render</span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>  , eval<span class="op">:</span> H.mkEval H.defaultEval</span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a><span class="ot">render ::</span> <span class="kw">forall</span> state action m<span class="op">.</span> state <span class="ot">-&gt;</span> <span class="dt">H.ComponentHTML</span> action () m</span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>render _ <span class="ot">=</span></span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>  HH.h2_</span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>  [ HH.text <span class="st">&quot;Child&quot;</span></span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a>  ]</span></code></pre></div>
+<h3 id="parent-component">Parent component</h3>
+<p>Now, the parent component with the slot and the child component.</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">module</span> <span class="dt">Component.Parent</span> <span class="kw">where</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Prelude</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Data.Symbol</span> ( <span class="dt">SProxy</span> (..) )</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a><span class="co">-- Internal</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Component.Child</span> <span class="kw">as</span> <span class="dt">Child</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a><span class="co">-- Halogen</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Halogen</span> <span class="kw">as</span> <span class="dt">H</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Halogen.HTML</span> <span class="kw">as</span> <span class="dt">HH</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="dt">ChildSlots</span> <span class="ot">=</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>  (<span class="ot"> child ::</span> <span class="dt">Child.Slot</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a><span class="ot">component ::</span> <span class="kw">forall</span> q i o m<span class="op">.</span> <span class="dt">H.Component</span> <span class="dt">HH.HTML</span> q i o m</span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>component <span class="ot">=</span></span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>  H.mkComponent</span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>  { initialState<span class="op">:</span> identity</span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a>  , render</span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a>  , eval<span class="op">:</span> H.mkEval H.defaultEval</span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a><span class="ot">render ::</span> <span class="kw">forall</span> action state m<span class="op">.</span> state <span class="ot">-&gt;</span> <span class="dt">H.ComponentHTML</span> action <span class="dt">ChildSlots</span> m</span>
+<span id="cb2-24"><a href="#cb2-24" aria-hidden="true" tabindex="-1"></a>render _ <span class="ot">=</span></span>
+<span id="cb2-25"><a href="#cb2-25" aria-hidden="true" tabindex="-1"></a>  HH.div_</span>
+<span id="cb2-26"><a href="#cb2-26" aria-hidden="true" tabindex="-1"></a>  [ HH.h1_ [ HH.text <span class="st">&quot;Parent&quot;</span> ]</span>
+<span id="cb2-27"><a href="#cb2-27" aria-hidden="true" tabindex="-1"></a>  , HH.hr []</span>
+<span id="cb2-28"><a href="#cb2-28" aria-hidden="true" tabindex="-1"></a>  , HH.slot ( <span class="dt">SProxy</span><span class="ot"> ::</span> _ <span class="st">&quot;child&quot;</span> )  unit Child.component {} absurd</span>
+<span id="cb2-29"><a href="#cb2-29" aria-hidden="true" tabindex="-1"></a>  ]</span></code></pre></div>
+<p>This will render the child component in the parent component.</p>
+<h3 id="child-to-parent-component-communication">Child to Parent component communication</h3>
+<p>The key to child-parent component communication is acheived with the use of
+<code class="codeLine">raise</code>. This is how the child component can send messages
+that the parent can then listen to. According to the <a href="https://pursuit.purescript.org/packages/purescript-halogen/4.0.0/docs/Halogen#v:raise">docs</a>
+this is how <code class="codeLine">raise</code> is defined.</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="ot">raise ::</span> <span class="kw">forall</span> s f g p o m<span class="op">.</span> o <span class="ot">-&gt;</span> <span class="dt">HalogenM</span> s f g p o m <span class="dt">Unit</span></span></code></pre></div>
+<p>Here’s the child component again, using <code class="codeLine">raise</code> in the
+<code class="codeLine">handleActions</code> function.</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="kw">module</span> <span class="dt">Component.Child</span> <span class="kw">where</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Prelude</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Data.Maybe</span> ( <span class="dt">Maybe</span>(..) )</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a><span class="co">-- Halogen</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Halogen</span> <span class="kw">as</span> <span class="dt">H</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Halogen.HTML</span> <span class="kw">as</span> <span class="dt">HH</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Halogen.HTML.Events</span> <span class="kw">as</span> <span class="dt">HE</span></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="dt">Slot</span> <span class="ot">=</span> <span class="kw">forall</span> query<span class="op">.</span> <span class="dt">H.Slot</span> query <span class="dt">OutputMessage</span> <span class="dt">Unit</span></span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">Action</span> <span class="ot">=</span> <span class="dt">HandleClick</span></span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">OutputMessage</span> <span class="ot">=</span> <span class="dt">ButtonClick</span> <span class="dt">Int</span></span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a><span class="ot">component ::</span> <span class="kw">forall</span> q m<span class="op">.</span> <span class="dt">H.Component</span> <span class="dt">HH.HTML</span> q <span class="dt">Unit</span> <span class="dt">OutputMessage</span> m</span>
+<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a>component <span class="ot">=</span></span>
+<span id="cb4-18"><a href="#cb4-18" aria-hidden="true" tabindex="-1"></a>  H.mkComponent</span>
+<span id="cb4-19"><a href="#cb4-19" aria-hidden="true" tabindex="-1"></a>  { initialState<span class="op">:</span> identity</span>
+<span id="cb4-20"><a href="#cb4-20" aria-hidden="true" tabindex="-1"></a>  , render</span>
+<span id="cb4-21"><a href="#cb4-21" aria-hidden="true" tabindex="-1"></a>  , eval<span class="op">:</span> H.mkEval <span class="op">$</span> H.defaultEval</span>
+<span id="cb4-22"><a href="#cb4-22" aria-hidden="true" tabindex="-1"></a>    { handleAction <span class="ot">=</span> handleAction }</span>
+<span id="cb4-23"><a href="#cb4-23" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb4-24"><a href="#cb4-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-25"><a href="#cb4-25" aria-hidden="true" tabindex="-1"></a><span class="ot">render ::</span> <span class="kw">forall</span> state m<span class="op">.</span> state <span class="ot">-&gt;</span> <span class="dt">H.ComponentHTML</span> <span class="dt">Action</span> () m</span>
+<span id="cb4-26"><a href="#cb4-26" aria-hidden="true" tabindex="-1"></a>render _ <span class="ot">=</span></span>
+<span id="cb4-27"><a href="#cb4-27" aria-hidden="true" tabindex="-1"></a>  HH.div_</span>
+<span id="cb4-28"><a href="#cb4-28" aria-hidden="true" tabindex="-1"></a>  [ HH.h2_ [ HH.text <span class="st">&quot;Child&quot;</span> ]</span>
+<span id="cb4-29"><a href="#cb4-29" aria-hidden="true" tabindex="-1"></a>  , HH.button</span>
+<span id="cb4-30"><a href="#cb4-30" aria-hidden="true" tabindex="-1"></a>    [ HE.onClick ( <span class="fu">const</span> <span class="op">$</span> <span class="dt">Just</span> <span class="dt">Click</span> )</span>
+<span id="cb4-31"><a href="#cb4-31" aria-hidden="true" tabindex="-1"></a>    ]</span>
+<span id="cb4-32"><a href="#cb4-32" aria-hidden="true" tabindex="-1"></a>    [ HH.text <span class="st">&quot;Send clicks to parent&quot;</span>]</span>
+<span id="cb4-33"><a href="#cb4-33" aria-hidden="true" tabindex="-1"></a>  ]</span>
+<span id="cb4-34"><a href="#cb4-34" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-35"><a href="#cb4-35" aria-hidden="true" tabindex="-1"></a><span class="ot">handleAction ::</span> <span class="kw">forall</span> m<span class="op">.</span> <span class="dt">Action</span> <span class="ot">-&gt;</span> <span class="dt">H.HalogenM</span> <span class="dt">Unit</span> <span class="dt">Action</span> () <span class="dt">OutputMessage</span> m <span class="dt">Unit</span></span>
+<span id="cb4-36"><a href="#cb4-36" aria-hidden="true" tabindex="-1"></a>handleAction <span class="ot">=</span> <span class="kw">case</span> _ <span class="kw">of</span></span>
+<span id="cb4-37"><a href="#cb4-37" aria-hidden="true" tabindex="-1"></a>  <span class="dt">HandleClick</span> <span class="ot">-&gt;</span> <span class="kw">do</span></span>
+<span id="cb4-38"><a href="#cb4-38" aria-hidden="true" tabindex="-1"></a>    H.raise ( <span class="dt">ButtonClick</span> <span class="dv">1</span> )</span></code></pre></div>
+<p>And here’s how the parent component can listen to that output message.
+You’ll notice that the constructor of <code class="codeLine">Action</code> has
+<code class="codeLine">Child.OutputMessage</code> input. This input is handled in the
+<code class="codeLine">handleAction</code> function.</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="kw">module</span> <span class="dt">Component.Parent</span> <span class="kw">where</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Prelude</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Data.Symbol</span> ( <span class="dt">SProxy</span> (..) )</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Data.Maybe</span> ( <span class="dt">Maybe</span>(..) )</span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a><span class="co">-- Internal</span></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Component.Child</span> <span class="kw">as</span> <span class="dt">Child</span></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a><span class="co">-- Halogen</span></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Halogen</span> <span class="kw">as</span> <span class="dt">H</span></span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Halogen.HTML</span> <span class="kw">as</span> <span class="dt">HH</span></span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="dt">ChildSlots</span> <span class="ot">=</span></span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a>  (<span class="ot"> child ::</span> <span class="dt">Child.Slot</span></span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">Action</span></span>
+<span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a>  <span class="ot">=</span> <span class="dt">HandleChildMsg</span> <span class="dt">Child.OutputMessage</span></span>
+<span id="cb5-18"><a href="#cb5-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-19"><a href="#cb5-19" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="dt">State</span> <span class="ot">=</span></span>
+<span id="cb5-20"><a href="#cb5-20" aria-hidden="true" tabindex="-1"></a>  {<span class="ot"> clickCount ::</span> <span class="dt">Int</span></span>
+<span id="cb5-21"><a href="#cb5-21" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb5-22"><a href="#cb5-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-23"><a href="#cb5-23" aria-hidden="true" tabindex="-1"></a><span class="ot">component ::</span> <span class="kw">forall</span> q i o m<span class="op">.</span> <span class="dt">H.Component</span> <span class="dt">HH.HTML</span> q i o m</span>
+<span id="cb5-24"><a href="#cb5-24" aria-hidden="true" tabindex="-1"></a>component <span class="ot">=</span></span>
+<span id="cb5-25"><a href="#cb5-25" aria-hidden="true" tabindex="-1"></a>  H.mkComponent</span>
+<span id="cb5-26"><a href="#cb5-26" aria-hidden="true" tabindex="-1"></a>  { initialState<span class="op">:</span> <span class="fu">const</span> { clickCount<span class="op">:</span> <span class="dv">0</span> }</span>
+<span id="cb5-27"><a href="#cb5-27" aria-hidden="true" tabindex="-1"></a>  , render</span>
+<span id="cb5-28"><a href="#cb5-28" aria-hidden="true" tabindex="-1"></a>  , eval<span class="op">:</span> H.mkEval <span class="op">$</span> H.defaultEval</span>
+<span id="cb5-29"><a href="#cb5-29" aria-hidden="true" tabindex="-1"></a>    { handleAction <span class="ot">=</span> handleAction }</span>
+<span id="cb5-30"><a href="#cb5-30" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb5-31"><a href="#cb5-31" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-32"><a href="#cb5-32" aria-hidden="true" tabindex="-1"></a><span class="ot">render ::</span> <span class="kw">forall</span> m<span class="op">.</span> <span class="dt">State</span> <span class="ot">-&gt;</span> <span class="dt">H.ComponentHTML</span> <span class="dt">Action</span> <span class="dt">ChildSlots</span> m</span>
+<span id="cb5-33"><a href="#cb5-33" aria-hidden="true" tabindex="-1"></a>render st <span class="ot">=</span></span>
+<span id="cb5-34"><a href="#cb5-34" aria-hidden="true" tabindex="-1"></a>  HH.div_</span>
+<span id="cb5-35"><a href="#cb5-35" aria-hidden="true" tabindex="-1"></a>  [ HH.h1_ [ HH.text <span class="st">&quot;Parent&quot;</span> ]</span>
+<span id="cb5-36"><a href="#cb5-36" aria-hidden="true" tabindex="-1"></a>  , HH.div_ [ HH.text <span class="op">$</span> <span class="fu">show</span> st<span class="op">.</span>clickCount ]</span>
+<span id="cb5-37"><a href="#cb5-37" aria-hidden="true" tabindex="-1"></a>  , HH.hr []</span>
+<span id="cb5-38"><a href="#cb5-38" aria-hidden="true" tabindex="-1"></a>  , HH.slot ( <span class="dt">SProxy</span><span class="ot"> ::</span> _ <span class="st">&quot;child&quot;</span> )  unit Child.component unit ( <span class="dt">Just</span> <span class="op">&lt;&lt;&lt;</span> <span class="dt">HandleChildMsg</span> )</span>
+<span id="cb5-39"><a href="#cb5-39" aria-hidden="true" tabindex="-1"></a>  ]</span>
+<span id="cb5-40"><a href="#cb5-40" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-41"><a href="#cb5-41" aria-hidden="true" tabindex="-1"></a><span class="ot">handleAction ::</span> <span class="kw">forall</span> o m<span class="op">.</span> <span class="dt">Action</span> <span class="ot">-&gt;</span> <span class="dt">H.HalogenM</span> <span class="dt">State</span> <span class="dt">Action</span> <span class="dt">ChildSlots</span> o m <span class="dt">Unit</span></span>
+<span id="cb5-42"><a href="#cb5-42" aria-hidden="true" tabindex="-1"></a>handleAction <span class="ot">=</span> <span class="kw">case</span> _ <span class="kw">of</span></span>
+<span id="cb5-43"><a href="#cb5-43" aria-hidden="true" tabindex="-1"></a>  <span class="dt">HandleChildMsg</span> ( <span class="dt">Child.ButtonClick</span> n ) <span class="ot">-&gt;</span> <span class="kw">do</span></span>
+<span id="cb5-44"><a href="#cb5-44" aria-hidden="true" tabindex="-1"></a>    count <span class="ot">&lt;-</span> H.gets _<span class="op">.</span>clickCount</span>
+<span id="cb5-45"><a href="#cb5-45" aria-hidden="true" tabindex="-1"></a>    H.modify_ _ { clickCount <span class="ot">=</span> count <span class="op">+</span> n }</span></code></pre></div>
+<p>Then <code class="codeLine">handleAction</code> function then matches
+<code class="codeLine">HandleChildMsg Child.OutputMessage</code> and modifies the state of the
+parent component.</p>
+<h3 id="parent-to-child-component-communication">Parent to Child component communication</h3>
+<p>Now for the parent to send messages to the child component. Let’s modify the
+child component to receive messages.</p>
+<p>First create the type of <code class="codeLine">Input</code>.</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="dt">Input</span> <span class="ot">=</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>  {<span class="ot"> messageFromParent ::</span> <span class="dt">String</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>  }</span></code></pre></div>
+<p>This will replace the <code class="codeLine">i</code> type variable in the <code class="codeLine">component</code>
+function.</p>
+<p>The key to receiving messages/input from the parent component is by providing the
+<code class="codeLine">receive</code> field in <code class="codeLine">H.defaultEval</code> with an action.
+According to the source, <code class="codeLine">receive</code> is defined like this</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="ot">receive ::</span> input <span class="ot">-&gt;</span> <span class="dt">Maybe</span> action</span></code></pre></div>
+<p>So we provide the <code class="codeLine">receive</code> field with
+<code class="codeLine">\input -&gt; Just $ HandleReceiveMessage input</code>, for that extra FP
+points we’ll provide it wit this this point free function
+<code class="codeLine">Just &lt;&lt;&lt; HandleRecieveMessage</code>. This action will then be handled
+in the <code>handleAction</code> function and update the state as desired.</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="kw">module</span> <span class="dt">Component.Child</span> <span class="kw">where</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Prelude</span></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Data.Maybe</span> ( <span class="dt">Maybe</span>(..) )</span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a><span class="co">-- Halogen</span></span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Halogen</span> <span class="kw">as</span> <span class="dt">H</span></span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Halogen.HTML</span> <span class="kw">as</span> <span class="dt">HH</span></span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Halogen.HTML.Events</span> <span class="kw">as</span> <span class="dt">HE</span></span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="dt">Slot</span> <span class="ot">=</span> <span class="kw">forall</span> query<span class="op">.</span> <span class="dt">H.Slot</span> query <span class="dt">OutputMessage</span> <span class="dt">Unit</span></span>
+<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">Action</span></span>
+<span id="cb8-13"><a href="#cb8-13" aria-hidden="true" tabindex="-1"></a>  <span class="ot">=</span> <span class="dt">HandleClick</span></span>
+<span id="cb8-14"><a href="#cb8-14" aria-hidden="true" tabindex="-1"></a>  <span class="op">|</span> <span class="dt">HandleReceiveMessage</span> <span class="dt">Input</span></span>
+<span id="cb8-15"><a href="#cb8-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-16"><a href="#cb8-16" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="dt">State</span> <span class="ot">=</span></span>
+<span id="cb8-17"><a href="#cb8-17" aria-hidden="true" tabindex="-1"></a>  {<span class="ot"> message ::</span> <span class="dt">String</span></span>
+<span id="cb8-18"><a href="#cb8-18" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb8-19"><a href="#cb8-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-20"><a href="#cb8-20" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">OutputMessage</span> <span class="ot">=</span> <span class="dt">ButtonClick</span> <span class="dt">Int</span></span>
+<span id="cb8-21"><a href="#cb8-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-22"><a href="#cb8-22" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="dt">Input</span> <span class="ot">=</span></span>
+<span id="cb8-23"><a href="#cb8-23" aria-hidden="true" tabindex="-1"></a>  {<span class="ot"> messageFromParent ::</span> <span class="dt">String</span></span>
+<span id="cb8-24"><a href="#cb8-24" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb8-25"><a href="#cb8-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-26"><a href="#cb8-26" aria-hidden="true" tabindex="-1"></a><span class="ot">component ::</span> <span class="kw">forall</span> q m<span class="op">.</span> <span class="dt">H.Component</span> <span class="dt">HH.HTML</span> q <span class="dt">Input</span> <span class="dt">OutputMessage</span> m</span>
+<span id="cb8-27"><a href="#cb8-27" aria-hidden="true" tabindex="-1"></a>component <span class="ot">=</span></span>
+<span id="cb8-28"><a href="#cb8-28" aria-hidden="true" tabindex="-1"></a>  H.mkComponent</span>
+<span id="cb8-29"><a href="#cb8-29" aria-hidden="true" tabindex="-1"></a>  { initialState<span class="op">:</span> <span class="fu">const</span> <span class="op">$</span> { message<span class="op">:</span> <span class="st">&quot;&quot;</span> }</span>
+<span id="cb8-30"><a href="#cb8-30" aria-hidden="true" tabindex="-1"></a>  , render</span>
+<span id="cb8-31"><a href="#cb8-31" aria-hidden="true" tabindex="-1"></a>  , eval<span class="op">:</span> H.mkEval <span class="op">$</span> H.defaultEval</span>
+<span id="cb8-32"><a href="#cb8-32" aria-hidden="true" tabindex="-1"></a>    { handleAction <span class="ot">=</span> handleAction</span>
+<span id="cb8-33"><a href="#cb8-33" aria-hidden="true" tabindex="-1"></a>    , receive <span class="ot">=</span> ( <span class="dt">Just</span> <span class="op">&lt;&lt;&lt;</span> <span class="dt">HandleReceiveMessage</span> )</span>
+<span id="cb8-34"><a href="#cb8-34" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb8-35"><a href="#cb8-35" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb8-36"><a href="#cb8-36" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-37"><a href="#cb8-37" aria-hidden="true" tabindex="-1"></a><span class="ot">render ::</span> <span class="kw">forall</span> m<span class="op">.</span> <span class="dt">State</span> <span class="ot">-&gt;</span> <span class="dt">H.ComponentHTML</span> <span class="dt">Action</span> () m</span>
+<span id="cb8-38"><a href="#cb8-38" aria-hidden="true" tabindex="-1"></a>render st <span class="ot">=</span></span>
+<span id="cb8-39"><a href="#cb8-39" aria-hidden="true" tabindex="-1"></a>  HH.div_</span>
+<span id="cb8-40"><a href="#cb8-40" aria-hidden="true" tabindex="-1"></a>  [ HH.h2_ [ HH.text <span class="st">&quot;Child&quot;</span> ]</span>
+<span id="cb8-41"><a href="#cb8-41" aria-hidden="true" tabindex="-1"></a>  , HH.button</span>
+<span id="cb8-42"><a href="#cb8-42" aria-hidden="true" tabindex="-1"></a>    [ HE.onClick ( <span class="fu">const</span> <span class="op">$</span> <span class="dt">Just</span> <span class="dt">HandleClick</span> )</span>
+<span id="cb8-43"><a href="#cb8-43" aria-hidden="true" tabindex="-1"></a>    ]</span>
+<span id="cb8-44"><a href="#cb8-44" aria-hidden="true" tabindex="-1"></a>    [ HH.text <span class="st">&quot;Send clicks to parent&quot;</span>]</span>
+<span id="cb8-45"><a href="#cb8-45" aria-hidden="true" tabindex="-1"></a>  , HH.h5_ [ HH.text <span class="st">&quot;Message from parent&quot;</span> ]</span>
+<span id="cb8-46"><a href="#cb8-46" aria-hidden="true" tabindex="-1"></a>  , HH.text st<span class="op">.</span>message</span>
+<span id="cb8-47"><a href="#cb8-47" aria-hidden="true" tabindex="-1"></a>  ]</span>
+<span id="cb8-48"><a href="#cb8-48" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-49"><a href="#cb8-49" aria-hidden="true" tabindex="-1"></a><span class="ot">handleAction ::</span> <span class="kw">forall</span> m<span class="op">.</span> <span class="dt">Action</span> <span class="ot">-&gt;</span> <span class="dt">H.HalogenM</span> <span class="dt">State</span> <span class="dt">Action</span> () <span class="dt">OutputMessage</span> m <span class="dt">Unit</span></span>
+<span id="cb8-50"><a href="#cb8-50" aria-hidden="true" tabindex="-1"></a>handleAction <span class="ot">=</span> <span class="kw">case</span> _ <span class="kw">of</span></span>
+<span id="cb8-51"><a href="#cb8-51" aria-hidden="true" tabindex="-1"></a>  <span class="dt">HandleClick</span> <span class="ot">-&gt;</span> <span class="kw">do</span></span>
+<span id="cb8-52"><a href="#cb8-52" aria-hidden="true" tabindex="-1"></a>    H.raise ( <span class="dt">ButtonClick</span> <span class="dv">1</span> )</span>
+<span id="cb8-53"><a href="#cb8-53" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-54"><a href="#cb8-54" aria-hidden="true" tabindex="-1"></a>  <span class="dt">HandleReceiveMessage</span> str <span class="ot">-&gt;</span></span>
+<span id="cb8-55"><a href="#cb8-55" aria-hidden="true" tabindex="-1"></a>    H.modify_ _ { message <span class="ot">=</span> str<span class="op">.</span>messageFromParent }</span></code></pre></div>
+<p>Now, let’s make the modification the parent component.</p>
+<p>First, let’s change the input parameter in the child slot from <code class="codeLine">unit</code>
+to <code class="codeLine">{ messageFromParent: st.messageToChild }</code> in the
+<code class="codeLine">render</code> function. The field <code class="codeLine">messageFromParent</code> is what
+the child component is expecting and <code class="codeLine">st.messageToChild</code> is the
+piece of state from the parent component that we’ll send to the child component.</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="kw">module</span> <span class="dt">Component.Parent</span> <span class="kw">where</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Prelude</span></span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Data.Symbol</span> ( <span class="dt">SProxy</span> (..) )</span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Data.Maybe</span> ( <span class="dt">Maybe</span>(..) )</span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a><span class="co">-- Internal</span></span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Component.Child</span> <span class="kw">as</span> <span class="dt">Child</span></span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a><span class="co">-- Halogen</span></span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Halogen</span> <span class="kw">as</span> <span class="dt">H</span></span>
+<span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Halogen.HTML</span> <span class="kw">as</span> <span class="dt">HH</span></span>
+<span id="cb9-11"><a href="#cb9-11" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Halogen.HTML.Events</span> <span class="kw">as</span> <span class="dt">HE</span></span>
+<span id="cb9-12"><a href="#cb9-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-13"><a href="#cb9-13" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="dt">ChildSlots</span> <span class="ot">=</span></span>
+<span id="cb9-14"><a href="#cb9-14" aria-hidden="true" tabindex="-1"></a>  (<span class="ot"> child ::</span> <span class="dt">Child.Slot</span></span>
+<span id="cb9-15"><a href="#cb9-15" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb9-16"><a href="#cb9-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-17"><a href="#cb9-17" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">Action</span></span>
+<span id="cb9-18"><a href="#cb9-18" aria-hidden="true" tabindex="-1"></a>  <span class="ot">=</span> <span class="dt">HandleChildMsg</span> <span class="dt">Child.OutputMessage</span></span>
+<span id="cb9-19"><a href="#cb9-19" aria-hidden="true" tabindex="-1"></a>  <span class="op">|</span> <span class="dt">HandleInput</span> <span class="dt">String</span></span>
+<span id="cb9-20"><a href="#cb9-20" aria-hidden="true" tabindex="-1"></a>  <span class="op">|</span> <span class="dt">SendMessageToChild</span></span>
+<span id="cb9-21"><a href="#cb9-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-22"><a href="#cb9-22" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="dt">State</span> <span class="ot">=</span></span>
+<span id="cb9-23"><a href="#cb9-23" aria-hidden="true" tabindex="-1"></a>  {<span class="ot"> clickCount ::</span> <span class="dt">Int</span></span>
+<span id="cb9-24"><a href="#cb9-24" aria-hidden="true" tabindex="-1"></a>  ,<span class="ot"> message ::</span> <span class="dt">String</span></span>
+<span id="cb9-25"><a href="#cb9-25" aria-hidden="true" tabindex="-1"></a>  ,<span class="ot"> messageToChild ::</span> <span class="dt">String</span></span>
+<span id="cb9-26"><a href="#cb9-26" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb9-27"><a href="#cb9-27" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-28"><a href="#cb9-28" aria-hidden="true" tabindex="-1"></a><span class="ot">component ::</span> <span class="kw">forall</span> q i o m<span class="op">.</span> <span class="dt">H.Component</span> <span class="dt">HH.HTML</span> q i o m</span>
+<span id="cb9-29"><a href="#cb9-29" aria-hidden="true" tabindex="-1"></a>component <span class="ot">=</span></span>
+<span id="cb9-30"><a href="#cb9-30" aria-hidden="true" tabindex="-1"></a>  H.mkComponent</span>
+<span id="cb9-31"><a href="#cb9-31" aria-hidden="true" tabindex="-1"></a>  { initialState<span class="op">:</span> <span class="fu">const</span> { clickCount<span class="op">:</span> <span class="dv">0</span>, message<span class="op">:</span> <span class="st">&quot;&quot;</span>, messageToChild<span class="op">:</span> <span class="st">&quot;&quot;</span> }</span>
+<span id="cb9-32"><a href="#cb9-32" aria-hidden="true" tabindex="-1"></a>  , render</span>
+<span id="cb9-33"><a href="#cb9-33" aria-hidden="true" tabindex="-1"></a>  , eval<span class="op">:</span> H.mkEval <span class="op">$</span> H.defaultEval</span>
+<span id="cb9-34"><a href="#cb9-34" aria-hidden="true" tabindex="-1"></a>    { handleAction <span class="ot">=</span> handleAction }</span>
+<span id="cb9-35"><a href="#cb9-35" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb9-36"><a href="#cb9-36" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-37"><a href="#cb9-37" aria-hidden="true" tabindex="-1"></a><span class="ot">render ::</span> <span class="kw">forall</span> m<span class="op">.</span> <span class="dt">State</span> <span class="ot">-&gt;</span> <span class="dt">H.ComponentHTML</span> <span class="dt">Action</span> <span class="dt">ChildSlots</span> m</span>
+<span id="cb9-38"><a href="#cb9-38" aria-hidden="true" tabindex="-1"></a>render st <span class="ot">=</span></span>
+<span id="cb9-39"><a href="#cb9-39" aria-hidden="true" tabindex="-1"></a>  HH.div_</span>
+<span id="cb9-40"><a href="#cb9-40" aria-hidden="true" tabindex="-1"></a>  [ HH.h1_ [ HH.text <span class="st">&quot;Parent&quot;</span> ]</span>
+<span id="cb9-41"><a href="#cb9-41" aria-hidden="true" tabindex="-1"></a>  , HH.div_</span>
+<span id="cb9-42"><a href="#cb9-42" aria-hidden="true" tabindex="-1"></a>    [ HH.input</span>
+<span id="cb9-43"><a href="#cb9-43" aria-hidden="true" tabindex="-1"></a>      [ HE.onValueInput ( <span class="dt">Just</span> <span class="op">&lt;&lt;&lt;</span> <span class="dt">HandleInput</span> )</span>
+<span id="cb9-44"><a href="#cb9-44" aria-hidden="true" tabindex="-1"></a>      ]</span>
+<span id="cb9-45"><a href="#cb9-45" aria-hidden="true" tabindex="-1"></a>    , HH.button</span>
+<span id="cb9-46"><a href="#cb9-46" aria-hidden="true" tabindex="-1"></a>      [ HE.onClick ( <span class="fu">const</span> <span class="op">$</span> <span class="dt">Just</span> <span class="dt">SendMessageToChild</span> )</span>
+<span id="cb9-47"><a href="#cb9-47" aria-hidden="true" tabindex="-1"></a>      ]</span>
+<span id="cb9-48"><a href="#cb9-48" aria-hidden="true" tabindex="-1"></a>      [ HH.text <span class="st">&quot;Send message to child component&quot;</span> ]</span>
+<span id="cb9-49"><a href="#cb9-49" aria-hidden="true" tabindex="-1"></a>    ]</span>
+<span id="cb9-50"><a href="#cb9-50" aria-hidden="true" tabindex="-1"></a>  , HH.h5_ [ HH.text <span class="st">&quot;Clicks from child component&quot;</span> ]</span>
+<span id="cb9-51"><a href="#cb9-51" aria-hidden="true" tabindex="-1"></a>  , HH.div_ [ HH.text <span class="op">$</span> <span class="fu">show</span> st<span class="op">.</span>clickCount ]</span>
+<span id="cb9-52"><a href="#cb9-52" aria-hidden="true" tabindex="-1"></a>  , HH.hr []</span>
+<span id="cb9-53"><a href="#cb9-53" aria-hidden="true" tabindex="-1"></a>  , HH.slot ( <span class="dt">SProxy</span><span class="ot"> ::</span> _ <span class="st">&quot;child&quot;</span> ) unit Child.component { messageFromParent<span class="op">:</span> st<span class="op">.</span>messageToChild } ( <span class="dt">Just</span> <span class="op">&lt;&lt;&lt;</span> <span class="dt">HandleChildMsg</span> )</span>
+<span id="cb9-54"><a href="#cb9-54" aria-hidden="true" tabindex="-1"></a>  ]</span>
+<span id="cb9-55"><a href="#cb9-55" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-56"><a href="#cb9-56" aria-hidden="true" tabindex="-1"></a><span class="ot">handleAction ::</span> <span class="kw">forall</span> o m<span class="op">.</span> <span class="dt">Action</span> <span class="ot">-&gt;</span> <span class="dt">H.HalogenM</span> <span class="dt">State</span> <span class="dt">Action</span> <span class="dt">ChildSlots</span> o m <span class="dt">Unit</span></span>
+<span id="cb9-57"><a href="#cb9-57" aria-hidden="true" tabindex="-1"></a>handleAction <span class="ot">=</span> <span class="kw">case</span> _ <span class="kw">of</span></span>
+<span id="cb9-58"><a href="#cb9-58" aria-hidden="true" tabindex="-1"></a>  <span class="dt">HandleChildMsg</span> ( <span class="dt">Child.ButtonClick</span> n ) <span class="ot">-&gt;</span> <span class="kw">do</span></span>
+<span id="cb9-59"><a href="#cb9-59" aria-hidden="true" tabindex="-1"></a>    count <span class="ot">&lt;-</span> H.gets _<span class="op">.</span>clickCount</span>
+<span id="cb9-60"><a href="#cb9-60" aria-hidden="true" tabindex="-1"></a>    H.modify_ _ { clickCount <span class="ot">=</span> count <span class="op">+</span> n }</span>
+<span id="cb9-61"><a href="#cb9-61" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-62"><a href="#cb9-62" aria-hidden="true" tabindex="-1"></a>  <span class="dt">HandleInput</span> str <span class="ot">-&gt;</span></span>
+<span id="cb9-63"><a href="#cb9-63" aria-hidden="true" tabindex="-1"></a>    H.modify_ _ { message <span class="ot">=</span> str }</span>
+<span id="cb9-64"><a href="#cb9-64" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-65"><a href="#cb9-65" aria-hidden="true" tabindex="-1"></a>  <span class="dt">SendMessageToChild</span> <span class="ot">-&gt;</span> <span class="kw">do</span></span>
+<span id="cb9-66"><a href="#cb9-66" aria-hidden="true" tabindex="-1"></a>    msg <span class="ot">&lt;-</span> H.gets _<span class="op">.</span>message</span>
+<span id="cb9-67"><a href="#cb9-67" aria-hidden="true" tabindex="-1"></a>    H.modify_ _ { messageToChild <span class="ot">=</span> msg }</span></code></pre></div>
+<p>The parent component is first updating the <code class="codeLine">message</code> field in the
+state based on the input element. Then, when the button is clicked it will update
+<code class="codeLine">messageToChild</code> with the value from <code class="codeLine">message</code>.</p>
+<p>The project and it’s entirety is <a href="https://taezos.org/piq9117/notes-examples/src/branch/master/halogen-parent-child">here</a>. Clone it and play
+with it!</p>
+<h2 id="sources">Sources</h2>
+<p><a href="https://github.com/purescript-halogen/purescript-halogen/tree/master/examples/components">Halogen Example by the Halogen team</a></p>
+<p><a href="https://github.com/purescript-halogen/purescript-halogen/blob/master/docs/5%20-%20Parent%20and%20child%20components.md">Halogen Guide by the Halogen team</a></p>
+<p><a href="https://github.com/thomashoneyman/purescript-halogen-realworld">Realworld Halogen Example</a></p>
+    </section>
+</article>
+
+        </main>
+
+        <footer>
+            Site proudly generated by
+            <a href="http://jaspervdj.be/hakyll">Hakyll</a>
+        </footer>
+    </body>
+</html>

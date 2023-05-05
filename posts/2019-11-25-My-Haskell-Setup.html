@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="x-ua-compatible" content="ie=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>piq9117 - Haskell - My setup/Workflow</title>
+        <link href="https://fonts.googleapis.com/css?family=Nanum+Gothic+Coding&display=swap" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css?family=EB+Garamond&display=swap" rel="stylesheet">
+        <link rel="stylesheet" href="../css/default.css" />
+    </head>
+    <body>
+        <header>
+            <div class="logo">
+                <a href="../">piq9117</a>
+            </div>
+            <nav>
+                <a href="../">home</a>
+                <a href="../about.html">about</a>
+                <a href="../contact.html">contact</a>
+            </nav>
+        </header>
+
+        <main role="main">
+            <h1>Haskell - My setup/Workflow</h1>
+            <article>
+    <section class="header">
+        Posted on November 25, 2019
+        
+    </section>
+    <section>
+        <p>Tools:</p>
+<ul>
+<li><p><a href="https://github.com/ndmitchell/ghcid">ghcid</a></p></li>
+<li><p><a href="https://github.com/hlissner/doom-emacs">doom-emacs</a></p></li>
+<li><p><a href="https://github.com/jaspervdj/stylish-haskell">stylish-haskell</a></p></li>
+<li><p><a href="https://www.haskell.org/cabal/">cabal</a></p></li>
+<li><p><a href="https://docs.haskellstack.org/en/stable/README/">stack</a></p></li>
+<li><p><a href="https://github.com/NixOS/nixpkgs">nixpkgs</a></p></li>
+</ul>
+<p>My setup matches my personality and that is I always go for the bare minimum. I
+download all these tools using <a href="https://github.com/NixOS/nixpkgs">nixpkgs</a> and I enable haskell-mode in
+<a href="https://github.com/hlissner/doom-emacs">doom-emacs</a>. That’s it! I start writing Haskell.</p>
+<p>Once I start writing Haskell I have another terminal open that runs
+<a href="https://github.com/ndmitchell/ghcid">ghcid</a>. It has very fast development feedback loop, it’s how I know if
+my types are matching. I use <a href="https://downloads.haskell.org/~ghc/7.10.1/docs/html/users_guide/typed-holes.html">typed-holes</a> heavily so ghcid can
+tell me what types I need for a section of my code.</p>
+<p>Here’s a contrived example</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ot">add ::</span> <span class="dt">Integer</span> <span class="ot">-&gt;</span> <span class="dt">Integer</span> <span class="ot">-&gt;</span> <span class="dt">Integer</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>add x y <span class="ot">=</span> x <span class="ot">`_whatdo`</span> y</span></code></pre></div>
+<p>This will be ghcid’s response in the repl</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="op">&lt;</span>interactive<span class="op">&gt;</span>:3:13: <span class="ex">error:</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    <span class="ex">•</span> Found hole: _what :: Integer <span class="at">-</span><span class="op">&gt;</span> Integer <span class="at">-</span><span class="op">&gt;</span> Integer</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>      <span class="ex">Or</span> perhaps ‘_what’ is mis-spelled, or not in scope</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    <span class="ex">•</span> In the expression: _what</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>      <span class="ex">In</span> the expression: x <span class="kw">`</span><span class="ex">_what</span><span class="kw">`</span> y</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>      <span class="ex">In</span> an equation for ‘add’: add x y = x <span class="kw">`</span><span class="ex">_what</span><span class="kw">`</span> y</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>    <span class="ex">•</span> Relevant bindings include</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>        <span class="ex">y</span> :: Integer <span class="er">(</span><span class="ex">bound</span> at <span class="op">&lt;</span>interactive<span class="op">&gt;</span>:3:7<span class="kw">)</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>        <span class="ex">x</span> :: Integer <span class="er">(</span><span class="ex">bound</span> at <span class="op">&lt;</span>interactive<span class="op">&gt;</span>:3:5<span class="kw">)</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>        <span class="ex">add</span> :: Integer <span class="at">-</span><span class="op">&gt;</span> Integer <span class="at">-</span><span class="op">&gt;</span> Integer <span class="er">(</span><span class="ex">bound</span> at <span class="op">&lt;</span>interactive<span class="op">&gt;</span>:3:1<span class="kw">)</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>      <span class="ex">Valid</span> hole fits include</span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>        <span class="ex">add</span> :: Integer <span class="at">-</span><span class="op">&gt;</span> Integer <span class="at">-</span><span class="op">&gt;</span> Integer <span class="er">(</span><span class="ex">bound</span> at <span class="op">&lt;</span>interactive<span class="op">&gt;</span>:3:1<span class="kw">)</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>        <span class="fu">seq</span> :: forall a b. a <span class="at">-</span><span class="op">&gt;</span> b <span class="at">-</span><span class="op">&gt;</span> b</span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>          <span class="ex">with</span> seq @Integer @Integer</span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>          <span class="kw">(</span><span class="ex">imported</span> from ‘Prelude’</span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>           <span class="kw">(</span><span class="ex">and</span> originally defined in ‘ghc-prim-0.5.3:GHC.Prim’<span class="kw">))</span></span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>        <span class="kw">(</span><span class="ex">-</span><span class="kw">)</span> <span class="ex">::</span> forall a. Num a =<span class="op">&gt;</span> a <span class="at">-</span><span class="op">&gt;</span> a <span class="at">-</span><span class="op">&gt;</span> a</span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>          <span class="ex">with</span> <span class="er">(</span><span class="ex">-</span><span class="kw">)</span> <span class="ex">@Integer</span></span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a>          <span class="kw">(</span><span class="ex">imported</span> from ‘Prelude’ <span class="er">(</span><span class="ex">and</span> originally defined in ‘GHC.Num’<span class="kw">))</span></span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a>        <span class="ex">asTypeOf</span> :: forall a. a <span class="at">-</span><span class="op">&gt;</span> a <span class="at">-</span><span class="op">&gt;</span> a</span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a>          <span class="ex">with</span> asTypeOf @Integer</span>
+<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a>          <span class="kw">(</span><span class="ex">imported</span> from ‘Prelude’ <span class="er">(</span><span class="ex">and</span> originally defined in ‘GHC.Base’<span class="kw">))</span></span>
+<span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a>        <span class="ex">const</span> :: forall a b. a <span class="at">-</span><span class="op">&gt;</span> b <span class="at">-</span><span class="op">&gt;</span> a</span>
+<span id="cb2-24"><a href="#cb2-24" aria-hidden="true" tabindex="-1"></a>          <span class="ex">with</span> const @Integer @Integer</span>
+<span id="cb2-25"><a href="#cb2-25" aria-hidden="true" tabindex="-1"></a>          <span class="kw">(</span><span class="ex">imported</span> from ‘Prelude’ <span class="er">(</span><span class="ex">and</span> originally defined in ‘GHC.Base’<span class="kw">))</span></span>
+<span id="cb2-26"><a href="#cb2-26" aria-hidden="true" tabindex="-1"></a>        <span class="ex">max</span> :: forall a. Ord a =<span class="op">&gt;</span> a <span class="at">-</span><span class="op">&gt;</span> a <span class="at">-</span><span class="op">&gt;</span> a</span>
+<span id="cb2-27"><a href="#cb2-27" aria-hidden="true" tabindex="-1"></a>          <span class="ex">with</span> max @Integer</span>
+<span id="cb2-28"><a href="#cb2-28" aria-hidden="true" tabindex="-1"></a>          <span class="kw">(</span><span class="ex">imported</span> from ‘Prelude’</span>
+<span id="cb2-29"><a href="#cb2-29" aria-hidden="true" tabindex="-1"></a>           <span class="kw">(</span><span class="ex">and</span> originally defined in ‘ghc-prim-0.5.3:GHC.Classes’<span class="kw">))</span></span>
+<span id="cb2-30"><a href="#cb2-30" aria-hidden="true" tabindex="-1"></a>        <span class="kw">(</span><span class="ex">Some</span> hole fits suppressed<span class="kw">;</span> <span class="ex">use</span> <span class="at">-fmax-valid-hole-fits</span><span class="op">=</span>N or <span class="at">-fno-max-valid-hole-fits</span><span class="kw">)</span></span></code></pre></div>
+<p>This tells me that I need a function that takes two <code>Integer</code> that also outputs
+an <code>Integer</code>. This even tells me the “Relevant bindings” and “Valid hole fits”
+which is amazing. ghcid helps as much as it can. This flow goes a very long
+way. It starts getting hazy for me when it comes to <a href="https://www.stackage.org/lts-14.16/package/lens-4.17.1">lens</a> errors,
+but I’m sure if I use lens more often I’ll be able to decipher what ghcid
+is telling me much quickly. This even works in the type level.</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="ot">add ::</span> _whatdo</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>add x y <span class="ot">=</span> x <span class="op">+</span> y</span></code></pre></div>
+<p>ghcid repl will respond with</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="op">&lt;</span>interactive<span class="op">&gt;</span>:8:1: <span class="ex">error:</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>    <span class="ex">•</span> Couldn<span class="st">'t match expected type ‘_whatdo’</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="st">                  with actual type ‘Integer -&gt; Integer -&gt; Integer’</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="st">      ‘_whatdo’ is a rigid type variable bound by</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a><span class="st">        the type signature for:</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a><span class="st">          add :: forall _whatdo. _whatdo</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a><span class="st">        at &lt;interactive&gt;:7:1-14</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a><span class="st">    • The equation(s) for ‘add’ have two arguments,</span></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a><span class="st">      but its type ‘_whatdo’ has none</span></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a><span class="st">    • Relevant bindings include</span></span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a><span class="st">        add :: _whatdo (bound at &lt;interactive&gt;:8:1)</span></span></code></pre></div>
+<p>ghcid is the reason I don’t use any IDE or any fancy editor plugins. I only have
+syntax highlighting and some formatting in my emacs.</p>
+<p>When it comes to actually running my code I usually use <a href="https://www.haskell.org/cabal/">cabal</a>. After
+ghcid tells me my code is clear I run</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="ex">cabal</span> new-build</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="ex">cabal</span> new-run</span></code></pre></div>
+<p>Sometimes I use <a href="https://docs.haskellstack.org/en/stable/README/">stack</a> because of <a href="https://github.com/yesodweb/yesod">yesod</a>. That’s mostly for work.</p>
+<p>I’m aware of the holy war between stack, cabal, and nix, I hope this blog doesn’t get
+involved in that war. I use all of them. They all have a spot in my workflow.</p>
+    </section>
+</article>
+
+        </main>
+
+        <footer>
+            Site proudly generated by
+            <a href="http://jaspervdj.be/hakyll">Hakyll</a>
+        </footer>
+    </body>
+</html>
