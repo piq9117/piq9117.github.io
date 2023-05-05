@@ -1,0 +1,94 @@
+.sourceCode {
+    font-family: 'Nanum Gothic Coding', monospace;
+}
+
+div.sourceCode{
+    display:block;
+    flex-direction:column;
+    max-width:100%;
+    box-sizing:inherit;
+}
+
+pre.sourceCode{
+    font-family: 'Nanum Pen Script', cursive;
+    overflow-x:auto;
+    padding:15px;
+    background-color:#282c33;
+    font-size: 16px;
+    color:white
+}
+table.sourceCode,tr.sourceCode,td.lineNumbers,td.sourceCode,table.sourceCode pre{
+    margin:0;
+    padding:0;
+    border:0;
+    vertical-align:baseline;
+    border:none
+}
+td.lineNumbers{
+    border-right:1px solid #AAAAAA;
+    text-align:right;
+    color:#AAAAAA;
+    padding-right:5px;
+    padding-left:5px
+}
+td.sourceCode{
+    padding-left:5px
+}
+.sourceCode span.kw{
+    color:#00b8e6;
+    font-weight:bold;
+}
+.sourceCode span.im{
+    color:#0066ff;
+}
+.sourceCode span.va{
+    color:#33ccff;
+}
+.sourceCode span.at{
+    color:#00ff00;
+}
+.sourceCode span.dt{
+    color:#ed4599;
+}
+.sourceCode span.dv{
+    color:#40a070;
+}
+.sourceCode span.bn{
+    color:#40a070;
+}
+.sourceCode span.fl{
+    color:#40a070;
+}
+.sourceCode span.ch{
+    color:#4070a0;
+}
+.sourceCode span.st{
+    color:#ff6699;
+}
+.sourceCode span.co{
+    color:#60a0b0;
+    font-style:italic;
+}
+.sourceCode span.ot{
+    /* color:#007020; */
+    color: #00ff48;
+}
+.sourceCode span.al{
+    color:red;
+    font-weight:bold;
+}
+.sourceCode span.fu{
+    color: #ffffff;
+}
+.sourceCode span.re{
+}
+.sourceCode span.er{
+    color:red;
+    font-weight:bold;
+}
+
+.codeLine{
+    font-family: 'Nanum Gothic Coding', monospace;
+    color:#ed4599;
+    padding:1px 4px 1px 4px;
+}
