@@ -22,6 +22,14 @@
             hakyll = super.haskell.lib.doJailbreak hsuper.hakyll;
           };
         };
+
+        build-site = self.writeScriptBin "build-site" ''
+          ${self.hsPkgs.cabal-install}/bin/cabal run site build
+        '';
+        watch-site = self.writeScriptBin "watch-site" ''
+          ${self.hsPkgs.cabal-install}/bin/cabal run site build &&
+          ${self.hsPkgs.cabal-install}/bin/cabal run site watch
+        '';
       };
       devShells = forAllSystems (system:
         let
@@ -41,6 +49,8 @@
               hsPkgs.hakyll
               treefmt
               ormolu
+              build-site
+              watch-site
             ] ++ libs;
             shellHook = "export PS1='[$PWD]\n❄ '";
             LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath libs;
