@@ -5,6 +5,7 @@ title: Nix - Calling a project with a flake file
 It hasn't been that long since I've been using flakes, and only recently started looking into consuming projects that are using flakes. I'm used to consuming projects with nix derivation files in them and using `callPackage`{.codeLine} on them but I had no clue on how to do it on projects with flake files. I don't think there's a place where nix documentation is consolidated so I googled "How to use nix callPackage on a project with a flake file". To no one's surprise, it didn't return anything useful. Sure, it returned a lot of results about nix flake tutorial but nothing in the first page about consuming a project that is using a nix flakes, and of course I didn't go beyond the first page of google results. I imagine beyond the first page of google search result is where you'll find [the backrooms][backrooms]
 
 My second attempt at seeking help was the nix discord, but all I got was 
+
 > Just use callPackage then. 
 
 Thank you, that was very helpful.

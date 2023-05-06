@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css?family=Special+Elite');
 .sourceCode {
     font-family: 'Nanum Gothic Coding', monospace;
 }
@@ -91,4 +92,45 @@ td.sourceCode{
     font-family: 'Nanum Gothic Coding', monospace;
     color:#ed4599;
     padding:1px 4px 1px 4px;
+}
+
+blockquote {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-weight: 100;
+  font-family: 'Special Elite', cursive;
+  font-size: 2rem;
+  max-width: 600px;
+  line-height: 1.4;
+  position: relative;
+  margin: 0;
+  padding: .5rem;
+}
+
+blockquote:before,
+blockquote:after {
+  position: absolute;
+  color: #f1efe6;
+  font-size: 8rem;
+  width: 4rem;
+  height: 4rem;
+}
+
+blockquote:before {
+  content: '“';
+  left: 0rem;
+  top: -2rem;
+}
+
+blockquote:after {
+  content: '”';
+  right: 0rem;
+  bottom: 1rem;
+}
+
+cite {
+  line-height: 3;
+  text-align: left;
 }
