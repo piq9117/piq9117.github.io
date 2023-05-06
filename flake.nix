@@ -23,13 +23,19 @@
           };
         };
 
+        clean-site = self.writeScriptBin "clean-site" ''
+          ${self.hsPkgs.cabal-install}/bin/cabal run site clean
+        '';
+
         build-site = self.writeScriptBin "build-site" ''
           ${self.hsPkgs.cabal-install}/bin/cabal run site build
         '';
+
         watch-site = self.writeScriptBin "watch-site" ''
           ${self.hsPkgs.cabal-install}/bin/cabal run site build &&
           ${self.hsPkgs.cabal-install}/bin/cabal run site watch
         '';
+
       };
       devShells = forAllSystems (system:
         let
@@ -51,6 +57,7 @@
               ormolu
               build-site
               watch-site
+              clean-site
             ] ++ libs;
             shellHook = "export PS1='[$PWD]\n❄ '";
             LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath libs;
