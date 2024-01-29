@@ -1,4 +1,4 @@
 ---
 title: About
 ---
-Hello! I'm, piq!
+Hello! I'm piq!
