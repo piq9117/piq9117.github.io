@@ -1,2 +1,4 @@
 dist-newstyle
 _cache
+.envrc
+.direnv
