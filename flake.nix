@@ -29,6 +29,7 @@
 
         build-site = self.writeScriptBin "build-site" ''
           ${self.hsPkgs.cabal-install}/bin/cabal run site build
+          cp CNAME docs/
         '';
 
         watch-site = self.writeScriptBin "watch-site" ''
