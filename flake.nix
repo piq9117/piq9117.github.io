@@ -1,7 +1,7 @@
 {
   description = "Piq's blog";
 
-  inputs.nixpkgs.url = "github:NixOS/nixpkgs/22.11";
+  inputs.nixpkgs.url = "github:NixOS/nixpkgs/23.11";
 
   outputs = { self, nixpkgs }:
     let
@@ -13,7 +13,7 @@
     in
     {
       overlay = self: super: {
-        hsPkgs = super.haskell.packages.ghc943.override {
+        hsPkgs = super.haskell.packages.ghc944.override {
           overrides = hself: hsuper: {
             hspec-contrib = super.haskell.lib.dontCheck (super.haskell.lib.doJailbreak hsuper.hspec-contrib);
             string-qq = super.haskell.lib.doJailbreak hsuper.string-qq;
@@ -22,6 +22,10 @@
             hakyll = super.haskell.lib.doJailbreak hsuper.hakyll;
           };
         };
+
+        ghcWithPkgs = self.hsPkgs.ghcWithPackages (ps: with ps; [ 
+          hakyll
+        ]);
 
         clean-site = self.writeScriptBin "clean-site" ''
           ${self.hsPkgs.cabal-install}/bin/cabal run site clean
@@ -47,12 +51,13 @@
         in
         {
           default = pkgs.hsPkgs.shellFor {
-            packages = hsPkgs: [ ];
+            packages = hsPkgs: with hsPkgs; [ hakyll ];
             buildInputs = with pkgs; [
               hsPkgs.cabal-install
               hsPkgs.cabal-fmt
               hsPkgs.ghcid
-              hsPkgs.ghc
+              # hsPkgs.ghc
+              ghcWithPkgs
               hsPkgs.hakyll
               treefmt
               ormolu
