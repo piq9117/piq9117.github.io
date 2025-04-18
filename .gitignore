@@ -2,3 +2,4 @@ dist-newstyle
 _cache
 .envrc
 .direnv
+docs/*
