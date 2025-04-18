@@ -37,7 +37,10 @@
             rm -r $GITROOT/_cache/
           fi
 
+          rm -rf $GITROOT/docs/*
+
           ${self.hsPkgs.cabal-install}/bin/cabal run site build
+
           cp CNAME docs/
         '';
 
