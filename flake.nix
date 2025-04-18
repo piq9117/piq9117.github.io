@@ -32,6 +32,8 @@
         '';
 
         build-site = self.writeScriptBin "build-site" ''
+          GITROOT=$(git rev-parse --show-toplevel)
+          rm -r $GITROOT/_cache/
           ${self.hsPkgs.cabal-install}/bin/cabal run site build
           cp CNAME docs/
         '';
