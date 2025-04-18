@@ -38,6 +38,6 @@ I later learned that `nixpkgs.overlay` does not affect this settings. What I had
   in {
   ...
 ```
-Then in my `windowManager.xmonad`, I had to assign `hsPkgs` to `windowManager.xmonad.haskellPackages`. 
+Then in my `windowManager.xmonad`{.codeLine}, I had to assign `hsPkgs` to `windowManager.xmonad.haskellPackages`{.codeLine}. 
 
-`sudo nixos-rebuild switch` and it worked! I didn't need to declare cabal or stack in my global package config and now I can check in this setup to git. I don't need the manual step of installing and removing packages anymore!
+`sudo nixos-rebuild switch`{.codeLine} and it worked! I didn't need to declare cabal or stack in my global package config and now I can check in this setup to git. I don't need the manual step of installing and removing packages anymore!

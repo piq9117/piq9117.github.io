@@ -1,6 +1,5 @@
 ---
 title: Grassroots Nix Binary Cache Deployment
-tags: nix, terraform
 ---
 
 I've been tinkering with my github actions for my personal project and quickly found out that it takes forever to build my haskell project with nix. It takes 34 minutes to complete a build. So I looked into cachix but $50/mo is pretty steep for a side project. So I started looking into how I can host my own in a virtual machine. After some googling, I found this blog [How to set up a nix binary cache with terraform in digitalocean](https://aldoborrero.com/posts/2022/11/25/how-to-set-up-a-nix-binary-cache-with-terraform-in-digitalocean--cloudflare/). It had everything I needed! And from digitalocean's estimate it will only cost me around $5.
