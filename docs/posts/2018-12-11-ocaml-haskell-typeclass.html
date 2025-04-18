@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="x-ua-compatible" content="ie=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>piq9117 - Ocaml - Haskell Typeclasses in Ocaml</title>
+        <link href="https://fonts.googleapis.com/css?family=Nanum+Gothic+Coding&display=swap" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css?family=EB+Garamond&display=swap" rel="stylesheet">
+        <link rel="stylesheet" href="../css/default.css" />
+    </head>
+    <body>
+        <header>
+            <div class="logo">
+                <a href="../">piq9117</a>
+            </div>
+            <nav>
+                <a href="../">home</a>
+                <a href="../about.html">about</a>
+                <a href="../contact.html">contact</a>
+            </nav>
+        </header>
+
+        <main role="main">
+            <h1>Ocaml - Haskell Typeclasses in Ocaml</h1>
+            <article>
+    <section class="header">
+        Posted on December 11, 2018
+        
+    </section>
+    <section>
+        <p>There are many articles explaining the things I’m about to log about.
+This is just my personal take and understanding on the subject.</p>
+<p>I think this is how Haskell Typeclasses are transposed in Ocaml.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> <span class="dt">Functor</span> f <span class="kw">where</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="ot">  fmap ::</span> (a <span class="ot">-&gt;</span> b) <span class="ot">-&gt;</span> f a <span class="ot">-&gt;</span> f b</span></code></pre></div>
+<div class="sourceCode" id="cb2"><pre class="sourceCode ocaml"><code class="sourceCode ocaml"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">module</span> <span class="kw">type</span> FUNCTOR = <span class="kw">sig</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  <span class="kw">type</span> _ f</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  <span class="kw">val</span> fmap : ('a -&gt; 'b) -&gt; 'a f -&gt; 'b f</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span></code></pre></div>
+<p>The most common data types I can think of is the <code class="codeLine">Maybe</code> data type
+from Haskell or the <code class="codeLine">option</code> in Ocaml. These data types are how
+these languages the possibility of <code class="codeLine">null</code>. These data types are
+going to prevent us from encoutering <code class="codeLine">NullReferenceException</code>
+like in other languages.</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">Maybe</span> a </span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>  <span class="ot">=</span> <span class="dt">Nothing</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>  <span class="op">|</span> <span class="dt">Just</span> a</span></code></pre></div>
+<div class="sourceCode" id="cb4"><pre class="sourceCode ocaml"><code class="sourceCode ocaml"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> 'a <span class="dt">option</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>  = <span class="dt">None</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>  | <span class="dt">Some</span> <span class="kw">of</span> 'a</span></code></pre></div>
+<p>Maybe and Option instance of the <code class="codeLine">Functor</code> typeclass.</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="kw">instance</span> <span class="dt">Functor</span> <span class="dt">Maybe</span> <span class="kw">where</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">fmap</span> f <span class="dt">Nothing</span> <span class="ot">=</span> <span class="dt">None</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">fmap</span> f (<span class="dt">Just</span> a) <span class="ot">=</span> <span class="dt">Just</span> (f a)</span></code></pre></div>
+<div class="sourceCode" id="cb6"><pre class="sourceCode ocaml"><code class="sourceCode ocaml"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="kw">module</span> OptionF : (FUNCTOR <span class="kw">with</span> <span class="kw">type</span> 'a f = 'a <span class="dt">option</span>) = <span class="kw">struct</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>  <span class="kw">type</span> 'a f = 'a <span class="dt">option</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>  <span class="kw">let</span> fmap f = <span class="kw">function</span></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>  | <span class="dt">None</span> -&gt; <span class="dt">None</span></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>  | <span class="dt">Some</span> a -&gt; <span class="dt">Some</span> (f a)</span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span></code></pre></div>
+<h3 id="in-action">In Action</h3>
+<div class="sourceCode" id="cb7"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="ot">capitalize ::</span> <span class="dt">Maybe</span> <span class="dt">Text</span> <span class="ot">-&gt;</span> <span class="dt">Maybe</span> <span class="dt">Text</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>capitalize name <span class="ot">=</span> <span class="fu">fmap</span> <span class="fu">toUpper</span> name</span></code></pre></div>
+<p>In ghci</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="ex">gchi</span><span class="op">&gt;</span> capitalize <span class="er">(</span><span class="ex">Just</span> <span class="st">&quot;John&quot;</span><span class="kw">)</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="ex">ghci</span><span class="op">&gt;</span> Just <span class="st">&quot;JOHN&quot;</span></span></code></pre></div>
+<p>The main difference here is I have to specify which <code class="codeLine">fmap</code> I have to
+use because Ocaml’s typesystem is not as powerful as Haskell’s where it will
+immediately determine which <code class="codeLine">fmap</code> to use just based on the type.</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode ocaml"><code class="sourceCode ocaml"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="kw">let</span> capitalize (name : <span class="dt">string</span> <span class="dt">option</span>) =</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>  OptionF.fmap Js.<span class="dt">String</span>.toUpperCase name</span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a><span class="kw">let</span> _ = Js.<span class="dt">log</span> @@ capitalize (<span class="dt">Some</span> <span class="st">&quot;John&quot;</span>)</span></code></pre></div>
+<p>Bucklescript will represent <code class="codeLine">Some</code> as an array.</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;</span> <span class="ex">[</span><span class="st">&quot;JOHN&quot;</span><span class="ex">]</span></span></code></pre></div>
+    </section>
+</article>
+
+        </main>
+
+        <footer>
+            Site proudly generated by
+            <a href="http://jaspervdj.be/hakyll">Hakyll</a>
+            <img referrerpolicy="no-referrer-when-downgrade" src="https://static.scarf.sh/a.png?x-pxid=db6c3007-dc77-4ac5-8ce3-46e1138f9016" />
+        </footer>
+    </body>
+</html>

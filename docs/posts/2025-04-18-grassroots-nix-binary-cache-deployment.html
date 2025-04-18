@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="x-ua-compatible" content="ie=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>piq9117 - Grassroots Nix Binary Cache Deployment</title>
+        <link href="https://fonts.googleapis.com/css?family=Nanum+Gothic+Coding&display=swap" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css?family=EB+Garamond&display=swap" rel="stylesheet">
+        <link rel="stylesheet" href="../css/default.css" />
+    </head>
+    <body>
+        <header>
+            <div class="logo">
+                <a href="../">piq9117</a>
+            </div>
+            <nav>
+                <a href="../">home</a>
+                <a href="../about.html">about</a>
+                <a href="../contact.html">contact</a>
+            </nav>
+        </header>
+
+        <main role="main">
+            <h1>Grassroots Nix Binary Cache Deployment</h1>
+            <article>
+    <section class="header">
+        Posted on April 18, 2025
+        
+    </section>
+    <section>
+        <p>I’ve been tinkering with my github actions for my personal project and quickly found out that it takes forever to build my haskell project with nix. It takes 34 minutes to complete a build. So I looked into cachix but $50/mo is pretty steep for a side project. So I started looking into how I can host my own in a virtual machine. After some googling, I found this blog <a href="https://aldoborrero.com/posts/2022/11/25/how-to-set-up-a-nix-binary-cache-with-terraform-in-digitalocean--cloudflare/">How to set up a nix binary cache with terraform in digitalocean</a>. It had everything I needed! And from digitalocean’s estimate it will only cost me around $5.</p>
+<p>I pretty much followed the terraform setup from that blog. Except for the CDN with cloudflare because digitalocean spaces already has a builtin CDN. Here’s how I set up my digitalocean spaces with terraform.</p>
+<h2 id="terraform">Terraform</h2>
+<p>First is to declare the bucket resource. Nothing surprising here.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>resource <span class="st">&quot;digitalocean_spaces_bucket&quot;</span> <span class="st">&quot;nix_cache&quot;</span> {</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  name   <span class="op">=</span> <span class="op">&lt;</span>cache name<span class="op">&gt;</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  region <span class="op">=</span> <span class="st">&quot;nyc3&quot;</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  acl    <span class="op">=</span> <span class="st">&quot;private&quot;</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>  lifecycle_rule {</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    id                                     <span class="op">=</span> <span class="st">&quot;ttl&quot;</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    enabled                                <span class="op">=</span> <span class="kw">true</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    abort_incomplete_multipart_upload_days <span class="op">=</span> <span class="dv">1</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>    expiration {</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>      days <span class="op">=</span> <span class="dv">7</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<p>Next is to create an object with some nix configuration.</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>resource <span class="st">&quot;digitalocean_spaces_bucket_object&quot;</span> <span class="st">&quot;nix_cache_info&quot;</span> {</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  region       <span class="op">=</span> digitalocean_spaces_bucket<span class="op">.</span><span class="at">nix_cache</span><span class="op">.</span><span class="at">region</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  bucket       <span class="op">=</span> digitalocean_spaces_bucket<span class="op">.</span><span class="at">nix_cache</span><span class="op">.</span><span class="at">id</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>  content_type <span class="op">=</span> <span class="st">&quot;text/plain&quot;</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>  key          <span class="op">=</span> <span class="st">&quot;nix-cache-info&quot;</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>  content      <span class="op">=</span> <span class="op">&lt;&lt;</span>EOF</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a><span class="dt">StoreDir</span><span class="op">:</span> <span class="ss">/nix/store</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a><span class="dt">WantMassQuery</span><span class="op">:</span> <span class="dv">1</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a><span class="dt">Priority</span><span class="op">:</span> <span class="dv">10</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>EOF</span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<ul>
+<li><code class="codeLine">StoreDir</code>: Specifies the directory where the Nix store is located in the system.</li>
+<li><code class="codeLine">WantMassQuery</code>: Indicates whether the cache supports bulk queries for paths.</li>
+<li><code class="codeLine">Priority</code>: Specifies the priority of the cache when multiple caches are configured.</li>
+</ul>
+<p>To configure CDN with digitalocean, declare the a cdn resource</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>resource <span class="st">&quot;digitalocean_cdn&quot;</span> <span class="st">&quot;nix_cache_cdn&quot;</span> {</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>  origin <span class="op">=</span> digitalocean_spaces_bucket<span class="op">.</span><span class="at">nix_cache</span><span class="op">.</span><span class="at">bucket_domain_name</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<p>If you want to configure it with your own domain, you can see the documentation here <a href="https://search.opentofu.org/provider/opentofu/digitalocean/latest/docs/resources/cdn">DigitalOcean Spaces CDN</a></p>
+<p>For access policy, luckily digitalocean spaces supports aws policy format. Which I’m used to. This is how I configured my policy</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode javascript"><code class="sourceCode javascript"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>resource <span class="st">&quot;digitalocean_spaces_bucket_policy&quot;</span> <span class="st">&quot;nix_cache_access_policy&quot;</span> {</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>  region <span class="op">=</span> digitalocean_spaces_bucket<span class="op">.</span><span class="at">nix_cache</span><span class="op">.</span><span class="at">region</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>  bucket <span class="op">=</span> digitalocean_spaces_bucket<span class="op">.</span><span class="at">nix_cache</span><span class="op">.</span><span class="at">id</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>  policy <span class="op">=</span> <span class="fu">jsonencode</span>({</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>    Id      <span class="op">=</span> <span class="st">&quot;DirectReads&quot;</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>    Version <span class="op">=</span> <span class="st">&quot;2012-10-17&quot;</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>    Statement <span class="op">=</span> [</span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>      {</span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>        Sid <span class="op">=</span> <span class="st">&quot;AllowDirectReads&quot;</span></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>        Action <span class="op">=</span> [</span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>          <span class="st">&quot;s3:GetObject&quot;</span><span class="op">,</span></span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>          <span class="st">&quot;s3:GetBucketLocation&quot;</span></span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>        ]</span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a>        Effect <span class="op">=</span> <span class="st">&quot;Allow&quot;</span></span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a>        Resource <span class="op">=</span> [</span>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a>          <span class="st">&quot;arn:aws:s3:::${digitalocean_spaces_bucket.nix_cache.id}&quot;</span><span class="op">,</span></span>
+<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a>          <span class="st">&quot;arn:aws:s3:::${digitalocean_spaces_bucket.nix_cache.id}/*&quot;</span><span class="op">,</span></span>
+<span id="cb4-18"><a href="#cb4-18" aria-hidden="true" tabindex="-1"></a>        ]</span>
+<span id="cb4-19"><a href="#cb4-19" aria-hidden="true" tabindex="-1"></a>        Principal <span class="op">=</span> <span class="st">&quot;*&quot;</span></span>
+<span id="cb4-20"><a href="#cb4-20" aria-hidden="true" tabindex="-1"></a>      }<span class="op">,</span></span>
+<span id="cb4-21"><a href="#cb4-21" aria-hidden="true" tabindex="-1"></a>      {</span>
+<span id="cb4-22"><a href="#cb4-22" aria-hidden="true" tabindex="-1"></a>        Sid <span class="op">=</span> <span class="st">&quot;AllowAuthorizedUpdates&quot;</span></span>
+<span id="cb4-23"><a href="#cb4-23" aria-hidden="true" tabindex="-1"></a>        Action <span class="op">=</span> [</span>
+<span id="cb4-24"><a href="#cb4-24" aria-hidden="true" tabindex="-1"></a>          <span class="st">&quot;s3:GetObject&quot;</span><span class="op">,</span></span>
+<span id="cb4-25"><a href="#cb4-25" aria-hidden="true" tabindex="-1"></a>          <span class="st">&quot;s3:GetBucketLocation&quot;</span><span class="op">,</span></span>
+<span id="cb4-26"><a href="#cb4-26" aria-hidden="true" tabindex="-1"></a>          <span class="st">&quot;s3:PutObject&quot;</span></span>
+<span id="cb4-27"><a href="#cb4-27" aria-hidden="true" tabindex="-1"></a>        ]</span>
+<span id="cb4-28"><a href="#cb4-28" aria-hidden="true" tabindex="-1"></a>        Effect <span class="op">=</span> <span class="st">&quot;Allow&quot;</span></span>
+<span id="cb4-29"><a href="#cb4-29" aria-hidden="true" tabindex="-1"></a>        Resource <span class="op">=</span> [</span>
+<span id="cb4-30"><a href="#cb4-30" aria-hidden="true" tabindex="-1"></a>          <span class="st">&quot;arn:aws:s3:::${digitalocean_spaces_bucket.nix_cache.id}&quot;</span><span class="op">,</span></span>
+<span id="cb4-31"><a href="#cb4-31" aria-hidden="true" tabindex="-1"></a>          <span class="st">&quot;arn:aws:s3:::${digitalocean_spaces_bucket.nix_cache.id}/*&quot;</span><span class="op">,</span></span>
+<span id="cb4-32"><a href="#cb4-32" aria-hidden="true" tabindex="-1"></a>        ]</span>
+<span id="cb4-33"><a href="#cb4-33" aria-hidden="true" tabindex="-1"></a>        Principal <span class="op">=</span> {</span>
+<span id="cb4-34"><a href="#cb4-34" aria-hidden="true" tabindex="-1"></a>          <span class="st">&quot;AWS&quot;</span> <span class="op">=</span> <span class="op">&lt;</span>digitalocean spacess access key id<span class="op">&gt;</span></span>
+<span id="cb4-35"><a href="#cb4-35" aria-hidden="true" tabindex="-1"></a>        }</span>
+<span id="cb4-36"><a href="#cb4-36" aria-hidden="true" tabindex="-1"></a>      }</span>
+<span id="cb4-37"><a href="#cb4-37" aria-hidden="true" tabindex="-1"></a>    ]</span>
+<span id="cb4-38"><a href="#cb4-38" aria-hidden="true" tabindex="-1"></a>  })</span>
+<span id="cb4-39"><a href="#cb4-39" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<p>I have a policy for anonymous reads. This way I don’t have to do some authentication dance when I pull from the cache from my github actions. I also have a policy for authenticated requests. This is where “grassroots” from the title comes in. I build my application locally and push the buildtime and runtime closures to my cache manually from my local machine. I do this so I know that I’m the only one pushing to my cache and I don’t get any surprise bill from digitalocean.</p>
+<h2 id="github-actions">Github Actions</h2>
+<p>In my github actions, this is how I configured the step to pull from my self hosted cache.</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode yaml"><code class="sourceCode yaml"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="kw">-</span><span class="at"> </span><span class="fu">uses</span><span class="kw">:</span><span class="at"> cachix/install-nix-action@v31</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">with</span><span class="kw">:</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">github_access_token</span><span class="kw">:</span><span class="at"> ${{ secrets.GITHUB_TOKEN }}</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">nix_path</span><span class="kw">:</span><span class="at"> nixpkgs=channel:nixos-unstable</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a><span class="fu">    extra_nix_config</span><span class="kw">: </span><span class="ch">|</span></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>      substituters = &lt;digitalocean spaces endpoint&gt;  https://cache.nixos.org/ </span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>      trusted-public-keys = &lt;nix cache public key&gt; cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY= </span></code></pre></div>
+<p>Without the public key I would get this error.</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="ex">warning:</span> ignoring substitute for <span class="st">'/nix/store/&lt;package-name&gt;'</span> from <span class="st">'&lt;nix cache endpoint&gt;'</span>, as it<span class="st">'s not signed by any of the keys in '</span>trusted-public-keys<span class="st">'</span></span></code></pre></div>
+<p>In order to get rid of the error above I had to sign the closures I pushed to my cache with a private key.</p>
+<p>I obtained the private and public keys by using this command</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="ex">nix-store</span> <span class="at">--generate-binary-cache-key</span> key-name <span class="op">&lt;</span>secret-key-file<span class="op">&gt;</span> <span class="op">&lt;</span>public-key-file<span class="op">&gt;</span></span></code></pre></div>
+<p>After obtaining the keys I signed the closures with this command</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="ex">nix-store</span> <span class="at">--query</span> <span class="at">--requisites</span> <span class="at">--include-outputs</span> <span class="va">$(</span><span class="ex">nix</span> build .#my-application <span class="at">--no-link</span> <span class="at">--print-out-paths</span><span class="va">)</span> <span class="kw">|</span> <span class="fu">xargs</span> <span class="at">-r</span> <span class="at">-n1</span> nix store sign <span class="at">--key-file</span> <span class="op">&lt;</span>public key<span class="op">&gt;</span></span></code></pre></div>
+<p>Once the buildtime and runtime closures are signed, it’s ready to be copied to the nix cache!</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="ex">nix-store</span> <span class="at">--query</span> <span class="at">--requisites</span> <span class="at">--include-outputs</span> <span class="va">$(</span><span class="ex">nix</span> buil .#my-application <span class="at">--no-link</span> <span class="at">--print-out-paths</span><span class="va">)</span> <span class="kw">|</span> <span class="fu">xargs</span> <span class="at">-r</span> <span class="at">-n1</span> nix copy <span class="at">--to</span> <span class="st">'s3://&lt;cache name&gt;?endpoint=&lt;region&gt;.digitaloceanspaces.com&amp;region=&lt;region&gt;'</span> <span class="at">--refresh</span></span></code></pre></div>
+<p>Without the <code class="codeLine">--refresh</code> flag, nix copy will not copy the paths.</p>
+<h2 id="result">Result</h2>
+<p>After all this configuration, I’ve addressed my main problem of builds taking around 30 minutes to finish. Now, it only takes 8 minutes. And this without a github cache. For now, I’m good with 8 minutes.</p>
+    </section>
+</article>
+
+        </main>
+
+        <footer>
+            Site proudly generated by
+            <a href="http://jaspervdj.be/hakyll">Hakyll</a>
+            <img referrerpolicy="no-referrer-when-downgrade" src="https://static.scarf.sh/a.png?x-pxid=db6c3007-dc77-4ac5-8ce3-46e1138f9016" />
+        </footer>
+    </body>
+</html>

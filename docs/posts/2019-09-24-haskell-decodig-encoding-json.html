@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="x-ua-compatible" content="ie=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>piq9117 - Haskell - Encoding and Decoding JSON with Aeson</title>
+        <link href="https://fonts.googleapis.com/css?family=Nanum+Gothic+Coding&display=swap" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css?family=EB+Garamond&display=swap" rel="stylesheet">
+        <link rel="stylesheet" href="../css/default.css" />
+    </head>
+    <body>
+        <header>
+            <div class="logo">
+                <a href="../">piq9117</a>
+            </div>
+            <nav>
+                <a href="../">home</a>
+                <a href="../about.html">about</a>
+                <a href="../contact.html">contact</a>
+            </nav>
+        </header>
+
+        <main role="main">
+            <h1>Haskell - Encoding and Decoding JSON with Aeson</h1>
+            <article>
+    <section class="header">
+        Posted on September 24, 2019
+        
+    </section>
+    <section>
+        <p>There are a lot of blog posts and tutorial about encoding/decoding JSON with
+<a href="https://hackage.haskell.org/package/aeson">aeson</a>. Even the library is pretty good at teaching how to do
+this. The tutorial I always go back to is <a href="https://artyom.me/aeson">Artyom Kazak’s</a>
+tutorial. They talk about lots of different techniques on how to decode and
+encode json on different cases.</p>
+<p>Let’s start off with the basics by deriving instances of <code class="codeLine">FromJSON</code>
+and <code class="codeLine">ToJSON</code> manually.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">Book</span> <span class="ot">=</span> <span class="dt">Book</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  {<span class="ot"> bookTitle     ::</span> <span class="dt">Text</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  ,<span class="ot"> bookISBN      ::</span> <span class="dt">Text</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  ,<span class="ot"> bookPublisher ::</span> <span class="dt">Text</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  ,<span class="ot"> bookLanguage  ::</span> <span class="dt">Text</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>  } <span class="kw">deriving</span> <span class="dt">Show</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="kw">instance</span> <span class="dt">FromJSON</span> <span class="dt">Book</span> <span class="kw">where</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>  parseJSON <span class="ot">=</span> withObject <span class="st">&quot;Book&quot;</span> <span class="op">$</span> \b <span class="ot">-&gt;</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>    <span class="dt">Book</span> <span class="op">&lt;$&gt;</span> b <span class="op">.:</span> <span class="st">&quot;title&quot;</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>         <span class="op">&lt;*&gt;</span> b <span class="op">.:</span> <span class="st">&quot;ISBN&quot;</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>         <span class="op">&lt;*&gt;</span> b <span class="op">.:</span> <span class="st">&quot;publisher&quot;</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>         <span class="op">&lt;*&gt;</span> b <span class="op">.:</span> <span class="st">&quot;language&quot;</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a><span class="kw">instance</span> <span class="dt">ToJSON</span> <span class="dt">Book</span> <span class="kw">where</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>  toJSON <span class="dt">Book</span> {<span class="op">..</span>} <span class="ot">=</span> object</span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>    [ <span class="st">&quot;title&quot;</span>     <span class="op">.=</span> bookTitle</span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>    , <span class="st">&quot;ISBN&quot;</span>      <span class="op">.=</span> bookISBN</span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>    , <span class="st">&quot;publisher&quot;</span> <span class="op">.=</span> bookPublisher</span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>    , <span class="st">&quot;language&quot;</span>  <span class="op">.=</span> bookLanguage</span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>    ]</span></code></pre></div>
+<p>With <code class="codeLine">FromJSON</code> and <code class="codeLine">ToJSON</code> instances we can now consume json of
+this shape:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span> <span class="dt">&quot;title&quot;</span><span class="fu">:</span> <span class="st">&quot;..&quot;</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="fu">,</span> <span class="dt">&quot;ISBN&quot;</span><span class="fu">:</span> <span class="st">&quot;..&quot;</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="fu">,</span> <span class="dt">&quot;publisher&quot;</span><span class="fu">:</span> <span class="st">&quot;..&quot;</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="fu">,</span> <span class="dt">&quot;language&quot;</span><span class="fu">:</span> <span class="st">&quot;..&quot;</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<p>As you can see when the type has more fields that also means that we have to
+type out all those fields. Your fingers are going to fall off by the time you
+are done with your app.</p>
+<p>One solution to minimize the boilerplate is by using <code class="codeLine">Generics</code></p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="ot">{-# LANGUAGE DeriveGeneric #-}</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">GHC.Generics</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">Book</span> <span class="ot">=</span> <span class="dt">Book</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>  {<span class="ot"> bookTitle     ::</span> <span class="dt">Text</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>  ,<span class="ot"> bookISBN      ::</span> <span class="dt">Text</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>  ,<span class="ot"> bookPublisher ::</span> <span class="dt">Text</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>  ,<span class="ot"> bookLanguage  ::</span> <span class="dt">Text</span></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>  } <span class="kw">deriving</span> (<span class="dt">Generic</span>, <span class="dt">Show</span>)</span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a><span class="kw">instance</span> <span class="dt">FromJSON</span> <span class="dt">Book</span></span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a><span class="kw">instance</span> <span class="dt">ToJSON</span> <span class="dt">Book</span></span></code></pre></div>
+<p>If we use <code class="codeLine">{-# LANGUAGE DeriveAnyClass #-}</code> pragma we can do this.</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="ot">{-# LANGUAGE DeriveAnyClass #-}</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="ot">{-# LANGUAGE DeriveGeneric #-}</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">Book</span> <span class="ot">=</span> <span class="dt">Book</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>  {<span class="ot"> bookTitle     ::</span> <span class="dt">Text</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>  ,<span class="ot"> bookISBN      ::</span> <span class="dt">Text</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>  ,<span class="ot"> bookPublisher ::</span> <span class="dt">Text</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>  ,<span class="ot"> bookLanguage  ::</span> <span class="dt">Text</span></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>  } <span class="kw">deriving</span> (<span class="dt">Generic</span>, <span class="dt">Show</span>, <span class="dt">FromJSON</span>, <span class="dt">ToJSON</span>)</span></code></pre></div>
+<h2 id="deriveanyclass-and-generlizednewtypederiving">DeriveAnyClass and GenerlizedNewTypeDeriving</h2>
+<p>If we have both of these language extensions enabled, ghc will complain about
+derivation being ambigious. To get around this use <code class="codeLine">{-# LANGUAGE DerivingStrategies #-}</code> language extension.</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="ot">{-# LANGUAGE DerivingStrategies #-}</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="ot">{-# LANGUAGE DeriveGeneric #-}</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">Book</span> <span class="ot">=</span> <span class="dt">Book</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>  {<span class="ot"> bookTitle     ::</span> <span class="dt">Text</span></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>  ,<span class="ot"> bookISBN      ::</span> <span class="dt">Text</span></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>  ,<span class="ot"> bookPublisher ::</span> <span class="dt">Text</span></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>  ,<span class="ot"> bookLanguage  ::</span> <span class="dt">Text</span></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>  } </span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a>  <span class="kw">deriving</span> (<span class="dt">Generic</span>, <span class="dt">Show</span>)</span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>  <span class="kw">deriving</span> anyclass (<span class="dt">FromJSON</span>, <span class="dt">ToJSON</span>)</span></code></pre></div>
+<p>If we don’t need to do anything with the field name this will suffice. However,
+our field name is <code class="codeLine">title</code> not <code class="codeLine">bookTitle</code> so we have to do a
+little modification to the field names by doing the following</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Text.Casing</span> (camel)</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Data.Aeson</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a><span class="kw">instance</span> <span class="dt">FromJSON</span> <span class="dt">Book</span> <span class="kw">where</span></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>  parseJSON <span class="ot">=</span> genericParseJSON </span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>    defaultOptions { fieldLabelModifier <span class="ot">=</span> camel <span class="op">.</span> <span class="fu">drop</span> <span class="dv">4</span> }</span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a><span class="kw">instance</span> <span class="dt">ToJSON</span> <span class="dt">Book</span> <span class="kw">where</span></span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>  toJSON <span class="ot">=</span> genericToJSON </span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a>    defaultOptions { fieldLabelModifier <span class="ot">=</span> camel <span class="op">.</span> <span class="fu">drop</span> <span class="dv">4</span> }</span></code></pre></div>
+<p>Here’s a reference to <a href="https://www.stackage.org/haddock/lts-14.2/aeson-1.4.4.0/Data-Aeson.html#v:defaultOptions">defaultOptions</a>. In the code above
+we’re doing a record update. That means it’s gonna <code class="codeLine">drop</code> 4
+characters from the beginning and then camel case it.</p>
+<h2 id="nullable-fields">Nullable Fields</h2>
+<p>When it comes to nullable fields, <code class="codeLine">Generics</code> will automatically use
+this operator <a href="https://www.stackage.org/haddock/lts-14.2/aeson-1.4.4.0/Data-Aeson.html#v:.:-63-">(.:?)</a> on fields that are <code class="codeLine">Maybe</code>s, which will use <code class="codeLine">Nothing</code> if
+the field is <code class="codeLine">null</code> or missing.</p>
+<h2 id="optional-fields">Optional Fields</h2>
+<p>For optional fields we have to go back to manually deriving <code class="codeLine">ToJSON</code>
+and <code class="codeLine">FromJSON</code> manually.</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">Book</span> <span class="ot">=</span> <span class="dt">Book</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>  {<span class="ot"> bookTitle     ::</span> <span class="dt">Text</span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>  ,<span class="ot"> bookISBN      ::</span> <span class="dt">Text</span></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>  ,<span class="ot"> bookPublisher ::</span> <span class="dt">Text</span></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>  ,<span class="ot"> bookLanguage  ::</span> <span class="dt">Text</span></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>  ,<span class="ot"> bookPrice     ::</span> <span class="dt">Maybe</span> (<span class="dt">Fixed</span> <span class="dt">E2</span>)</span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>  } <span class="kw">deriving</span> <span class="dt">Show</span></span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a><span class="kw">instance</span> <span class="dt">FromJSON</span> <span class="dt">Book</span> <span class="kw">where</span></span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a>  parseJSON <span class="ot">=</span> withObject <span class="st">&quot;Book&quot;</span> <span class="op">$</span> \b <span class="ot">-&gt;</span></span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a>    <span class="dt">Book</span> <span class="op">&lt;$&gt;</span> b <span class="op">.:</span> <span class="st">&quot;title&quot;</span></span>
+<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a>         <span class="op">&lt;*&gt;</span> b <span class="op">.:</span> <span class="st">&quot;ISBN&quot;</span></span>
+<span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a>         <span class="op">&lt;*&gt;</span> b <span class="op">.:</span> <span class="st">&quot;publisher&quot;</span></span>
+<span id="cb7-14"><a href="#cb7-14" aria-hidden="true" tabindex="-1"></a>         <span class="op">&lt;*&gt;</span> b <span class="op">.:</span> <span class="st">&quot;language&quot;</span></span>
+<span id="cb7-15"><a href="#cb7-15" aria-hidden="true" tabindex="-1"></a>         <span class="op">&lt;*&gt;</span> optional (b <span class="op">.:</span> <span class="st">&quot;price&quot;</span>)</span></code></pre></div>
+<h3 id="sum-types">Sum Types</h3>
+<div class="sourceCode" id="cb8"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="ot">{-# LANGUAGE RecordWildCards #-}</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">BookFormat</span> </span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a> <span class="ot">=</span> <span class="dt">Ebook</span> {<span class="ot"> price ::</span> <span class="dt">Fixed</span> <span class="dt">E2</span> }</span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a> <span class="op">|</span> <span class="dt">PhysicalBook</span> {<span class="ot"> price ::</span> <span class="dt">Fixed</span> <span class="dt">E2</span>,<span class="ot"> coverType ::</span> <span class="dt">Text</span> }</span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>  <span class="kw">deriving</span> <span class="dt">Show</span></span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a><span class="kw">instance</span> <span class="dt">FromJSON</span> <span class="dt">BookFormat</span> <span class="kw">where</span></span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a>  parseJSON <span class="ot">=</span> withObject <span class="st">&quot;BookFormat&quot;</span> <span class="op">$</span> \b <span class="ot">-&gt;</span> asum</span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a>    [ <span class="dt">Ebook</span> <span class="op">&lt;$&gt;</span> b <span class="op">.:</span> <span class="st">&quot;price&quot;</span></span>
+<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a>    , <span class="dt">PhysicalBook</span> <span class="op">&lt;$&gt;</span> b <span class="op">.:</span> <span class="st">&quot;price&quot;</span></span>
+<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a>                   <span class="op">&lt;*&gt;</span> b <span class="op">.:</span> <span class="st">&quot;coverType&quot;</span></span>
+<span id="cb8-13"><a href="#cb8-13" aria-hidden="true" tabindex="-1"></a>    ]</span>
+<span id="cb8-14"><a href="#cb8-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-15"><a href="#cb8-15" aria-hidden="true" tabindex="-1"></a><span class="kw">instance</span> <span class="dt">ToJSON</span> <span class="dt">BookFormat</span> <span class="kw">where</span></span>
+<span id="cb8-16"><a href="#cb8-16" aria-hidden="true" tabindex="-1"></a>  toJSON <span class="ot">=</span> \<span class="kw">case</span> </span>
+<span id="cb8-17"><a href="#cb8-17" aria-hidden="true" tabindex="-1"></a>    <span class="dt">Ebook</span> {<span class="op">..</span>} <span class="ot">-&gt;</span> object [ <span class="st">&quot;price&quot;</span> <span class="op">.=</span> price ]</span>
+<span id="cb8-18"><a href="#cb8-18" aria-hidden="true" tabindex="-1"></a>    <span class="dt">PhysicalBook</span> {<span class="op">..</span>} <span class="ot">-&gt;</span> object [ <span class="st">&quot;price&quot;</span> <span class="op">.=</span> price, <span class="st">&quot;coverType&quot;</span> <span class="op">.=</span> coverType]</span></code></pre></div>
+<p>or if we we can decide based on the <code class="codeLine">format</code></p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="kw">instance</span> <span class="dt">FromJSON</span> <span class="dt">BookFormat</span> <span class="kw">where</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>  parseJSON <span class="ot">=</span> withObject <span class="st">&quot;BookFormat&quot;</span> <span class="op">$</span> \b <span class="ot">-&gt;</span> <span class="kw">do</span></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>    format <span class="ot">&lt;-</span> b <span class="op">.:</span> <span class="st">&quot;format&quot;</span></span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>    <span class="kw">case</span> (<span class="ot">format ::</span> <span class="dt">Text</span>) <span class="kw">of</span></span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>      <span class="st">&quot;ebook&quot;</span> <span class="ot">-&gt;</span> <span class="dt">Ebook</span> <span class="op">&lt;$&gt;</span> b <span class="op">.:</span> <span class="st">&quot;price&quot;</span></span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>      <span class="st">&quot;physicalBook&quot;</span> <span class="ot">-&gt;</span></span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>        <span class="dt">PhysicalBook</span> <span class="op">&lt;$&gt;</span> b <span class="op">.:</span> <span class="st">&quot;price&quot;</span></span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a>                     <span class="op">&lt;*&gt;</span> b <span class="op">.:</span> <span class="st">&quot;coverType&quot;</span></span></code></pre></div>
+<p>The same with product types we can also use <code class="codeLine">Generics</code> and some
+language extensions to derive <code class="codeLine">FromJSON</code> and <code class="codeLine">ToJSON</code> instance</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="ot">{-# LANGUAGE DeriveGeneric #-}</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a><span class="ot">{-# LANGUAGE DeriveAnyClass #-}</span></span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">GHC.Generics</span></span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">BookFormat</span></span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a> <span class="ot">=</span> <span class="dt">Ebook</span> {<span class="ot"> price ::</span> <span class="dt">Fixed</span> <span class="dt">E2</span> }</span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a> <span class="op">|</span> <span class="dt">PhysicalBook</span> {<span class="ot"> price ::</span> <span class="dt">Fixed</span> <span class="dt">E2</span>,<span class="ot"> coverType ::</span> <span class="dt">Text</span> }</span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a>  <span class="kw">deriving</span> (<span class="dt">Show</span>, <span class="dt">Generic</span>, <span class="dt">ToJSON</span>, <span class="dt">FromJSON</span>)</span></code></pre></div>
+<p>These are the usual day to day techniques of encoding/decoding json data that I
+use.</p>
+    </section>
+</article>
+
+        </main>
+
+        <footer>
+            Site proudly generated by
+            <a href="http://jaspervdj.be/hakyll">Hakyll</a>
+            <img referrerpolicy="no-referrer-when-downgrade" src="https://static.scarf.sh/a.png?x-pxid=db6c3007-dc77-4ac5-8ce3-46e1138f9016" />
+        </footer>
+    </body>
+</html>
