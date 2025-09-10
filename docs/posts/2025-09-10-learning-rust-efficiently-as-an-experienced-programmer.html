@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="x-ua-compatible" content="ie=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>piq9117 - Learning Rust Efficiently as an Experienced Programmer</title>
+        <link href="https://fonts.googleapis.com/css?family=Nanum+Gothic+Coding&display=swap" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css?family=EB+Garamond&display=swap" rel="stylesheet">
+        <link rel="stylesheet" href="../css/default.css" />
+    </head>
+    <body>
+        <header>
+            <div class="logo">
+                <a href="../">piq9117</a>
+            </div>
+            <nav>
+                <a href="../">home</a>
+                <a href="../about.html">about</a>
+                <a href="../contact.html">contact</a>
+            </nav>
+        </header>
+
+        <main role="main">
+            <h1>Learning Rust Efficiently as an Experienced Programmer</h1>
+            <article>
+    <section class="header">
+        Posted on September 10, 2025
+        
+    </section>
+    <section>
+        <p>The <a href="https://doc.rust-lang.org/book">rust book</a> has been effective at guiding me learn rust features but it belabors on some concepts because it is catered for beginner programmers.</p>
+<p>Most of the concepts in the early chapters are already familiar and I’m the type of learner that learn by example so after a couple of chapters I jumped to chapter 12; <a href="https://doc.rust-lang.org/book/ch12-00-an-io-project.html">An I/O Project: Building a Command Line Program</a>. This chapter aggregates a lot of the concepts from earlier chapters like code modularization, ownership, traits, and lifetimes.</p>
+<p>I’ll go through my approach in implementing the example in chapter 12. When a language implements sum types and pattern matching, I try to utilize it as much as I can instead of using booleans. The code flow of declaring a variable, mutating, then returning it is also not my style. So I jumped to <a href="https://doc.rust-lang.org/book/ch13-00-functional-features.html">chapter 13</a> to peek at Iterators.</p>
+<p>I’m not saying this function is bad. The mutation is localized, and rust lifetimes prevents me from doing dumb mutations all over the code. It is just not my style.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode rust"><code class="sourceCode rust"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">pub</span> <span class="kw">fn</span> search_case_insensitive<span class="op">&lt;</span><span class="ot">'a</span><span class="op">&gt;</span>(</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    query<span class="op">:</span> <span class="op">&amp;</span><span class="dt">str</span><span class="op">,</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    contents<span class="op">:</span> <span class="op">&amp;</span><span class="ot">'a</span> <span class="dt">str</span><span class="op">,</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>) <span class="op">-&gt;</span> <span class="dt">Vec</span><span class="op">&lt;&amp;</span><span class="ot">'a</span> <span class="dt">str</span><span class="op">&gt;</span> <span class="op">{</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    <span class="kw">let</span> query <span class="op">=</span> query<span class="op">.</span>to_lowercase()<span class="op">;</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    <span class="kw">let</span> <span class="kw">mut</span> results <span class="op">=</span> <span class="dt">Vec</span><span class="pp">::</span>new()<span class="op">;</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> line <span class="kw">in</span> contents<span class="op">.</span>lines() <span class="op">{</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> line<span class="op">.</span>to_lowercase()<span class="op">.</span>contains(<span class="op">&amp;</span>query) <span class="op">{</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>            results<span class="op">.</span>push(line)<span class="op">;</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>    results</span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a><span class="kw">pub</span> <span class="kw">fn</span> search<span class="op">&lt;</span><span class="ot">'a</span><span class="op">&gt;</span>(query<span class="op">:</span> <span class="op">&amp;</span><span class="dt">str</span><span class="op">,</span> contents<span class="op">:</span> <span class="op">&amp;</span><span class="ot">'a</span> <span class="dt">str</span>) <span class="op">-&gt;</span> <span class="dt">Vec</span><span class="op">&lt;&amp;</span><span class="ot">'a</span> <span class="dt">str</span><span class="op">&gt;</span> <span class="op">{</span></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>    <span class="kw">let</span> <span class="kw">mut</span> results <span class="op">=</span> <span class="dt">Vec</span><span class="pp">::</span>new()<span class="op">;</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> line <span class="kw">in</span> contents<span class="op">.</span>lines() <span class="op">{</span></span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> line<span class="op">.</span>contains(query) <span class="op">{</span></span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>            results<span class="op">.</span>push(line)<span class="op">;</span></span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a>    results</span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>Usage of the 2 functions</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode rust"><code class="sourceCode rust"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>    <span class="kw">let</span> results <span class="op">=</span> <span class="cf">if</span> config<span class="op">.</span>ignore_case <span class="op">{</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>        search_case_insensitive(<span class="op">&amp;</span>config<span class="op">.</span>query<span class="op">,</span> <span class="op">&amp;</span>contents)</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span> <span class="cf">else</span> <span class="op">{</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>        search(<span class="op">&amp;</span>config<span class="op">.</span>query<span class="op">,</span> <span class="op">&amp;</span>contents)</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    <span class="op">};</span></span></code></pre></div>
+<p>I try to avoid booleans as much as I can because I’ve been a victim of <a href="https://existentialtype.wordpress.com/2011/03/15/boolean-blindness">boolean blindness</a> so many times. So if I can express a value in terms of sum types, I will do it and avoid booleans. Plus, sum types are discussed early in the book <a href="https://doc.rust-lang.org/book/ch06-00-enums.html">chapter 6</a></p>
+<p>Below is my approach. To avoid booleans, I first declare a sum type called <code class="codeLine">CaseSensitivity</code>.</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode rust"><code class="sourceCode rust"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">pub</span> <span class="kw">enum</span> CaseSensitivity <span class="op">{</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>    Sensitive<span class="op">,</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    Insensitive<span class="op">,</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>Instead of implementing 2 functions, I’ve unified the implementation and utilized the sum type I’ve defined.</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode rust"><code class="sourceCode rust"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="kw">pub</span> <span class="kw">fn</span> search<span class="op">&lt;</span><span class="ot">'a</span><span class="op">&gt;</span>(</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>    query<span class="op">:</span> <span class="op">&amp;</span><span class="dt">str</span><span class="op">,</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>    contents<span class="op">:</span> <span class="op">&amp;</span><span class="ot">'a</span> <span class="dt">str</span><span class="op">,</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>    case_sensitivity<span class="op">:</span> <span class="op">&amp;</span>CaseSensitivity<span class="op">,</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>) <span class="op">-&gt;</span> <span class="dt">Vec</span><span class="op">&lt;&amp;</span><span class="ot">'a</span> <span class="dt">str</span><span class="op">&gt;</span> <span class="op">{</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>    contents</span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>        <span class="op">.</span>lines()</span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>        <span class="op">.</span>filter(<span class="op">|</span>line<span class="op">|</span> <span class="cf">match</span> case_sensitivity <span class="op">{</span></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>            <span class="pp">CaseSensitivity::</span>Insensitive <span class="op">=&gt;</span> line<span class="op">.</span>to_lowercase()<span class="op">.</span>contains(<span class="op">&amp;</span>query<span class="op">.</span>to_lowercase())<span class="op">,</span></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>            <span class="pp">CaseSensitivity::</span>Sensitive <span class="op">=&gt;</span> line<span class="op">.</span>contains(query)<span class="op">,</span></span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span>)</span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>        <span class="op">.</span>collect()</span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>I’m not saying this is the right way of implementing this function. This is just my own style.</p>
+<p>The book is a solid resource for learning rust but can feel slow-paced. So if you’re an experienced programmer and learn by example skip ahead and expexpirement! <a href="https://doc.rust-lang.org/book/ch12-00-an-io-project.html">chapter 12</a> and <a href="https://doc.rust-lang.org/book/ch21-00-final-project-a-web-server.html">chapter 21</a> are great chapters to start with.</p>
+    </section>
+</article>
+
+        </main>
+
+        <footer>
+            Site proudly generated by
+            <a href="http://jaspervdj.be/hakyll">Hakyll</a>
+            <img referrerpolicy="no-referrer-when-downgrade" src="https://static.scarf.sh/a.png?x-pxid=db6c3007-dc77-4ac5-8ce3-46e1138f9016" />
+        </footer>
+    </body>
+</html>
